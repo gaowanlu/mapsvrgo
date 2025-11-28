@@ -3,6 +3,7 @@ local Log = require("Log")
 local PlayerCmptBag = require("PlayerCmptBagData")
 
 function PlayerCmptBag.new(owner)
+    -- 本质是 setmetatable(PlayerCmptBase.new(owner), {__index=PlayerCmptBag})
     local self = setmetatable(PlayerCmptBase.new(owner), PlayerCmptBag)
     return self
 end

@@ -4,7 +4,7 @@ local Log = require("Log")
 
 -- 构造新的Map对象
 function Map.new(mapId)
-    local self = setmetatable({}, Map);
+    local self = setmetatable({}, Map); -- 本质是 setmetatable({}, {__index = Map})
 
     -- 模拟Map的DB字段
     self.MapDbData = {}

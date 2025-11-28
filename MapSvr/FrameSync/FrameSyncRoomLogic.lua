@@ -4,7 +4,7 @@ local Log = require("Log")
 
 -- 构造新的FrameSyncRoom对象
 function FrameSyncRoom.new(roomId)
-    local self = setmetatable({}, FrameSyncRoom);
+    local self = setmetatable({}, FrameSyncRoom); -- 本质是 setmetatable({},{_index=FrameSyncRoom})
 
     -- 模拟FrameSyncRoom的DB字段
     self.FrameSyncRoomDbData = {}

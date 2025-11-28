@@ -6,7 +6,7 @@ local PlayerCmptBag = require("PlayerCmptBagLogic")
 
 -- Player类的方法
 function Player.new(playerId)
-    -- 创建一个Player对象
+    -- 创建一个Player对象 setmetatable({},{__index=Player})
     local self = setmetatable({}, Player)
 
     -- 模拟玩家的DB字段
