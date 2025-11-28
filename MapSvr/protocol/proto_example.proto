@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package avant;
+
+option go_package = "/proto_res";
+
+// PROTO_CMD_CS_REQ_EXAMPLE
+message ProtoCSReqExample
+{
+    bytes testContext = 1;
+}
+
+// PROTO_CMD_CS_RES_EXAMPLE
+message ProtoCSResExample
+{
+    bytes testContext = 1;
+}
