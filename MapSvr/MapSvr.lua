@@ -8,10 +8,14 @@ end
 
 function MapSvr.OnStop()
     PlayerMgr.OnStop()
+    MapMgr.OnStop()
+    FrameSyncRoomMgr.OnStop()
 end
 
 function MapSvr.OnTick()
     PlayerMgr.OnTick()
+    MapMgr.OnTick()
+    FrameSyncRoomMgr.OnTick()
 end
 
 function MapSvr.OnReload()
@@ -23,6 +27,10 @@ function MapSvr.OnReload()
     table.insert(reloadList, "PlayerCmptBaseLogic")
     table.insert(reloadList, "PlayerCmptInfoLogic")
     table.insert(reloadList, "PlayerCmptBagLogic")
+    table.insert(reloadList, "MapLogic")
+    table.insert(reloadList, "MapMgrLogic")
+    table.insert(reloadList, "FrameSyncRoomLogic")
+    table.insert(reloadList, "FrameSyncRoomMgrLogic")
 
     for i, name in ipairs(reloadList) do
         package.loaded[name] = nil;
@@ -39,6 +47,10 @@ function MapSvr.OnReload()
 
     -- 初始化一个玩家Player
     PlayerMgr.CreatePlayer(1)
+    -- 初始化一张地图
+    MapMgr.CreateMap(2)
+    -- 初始化一个帧同步房间
+    FrameSyncRoomMgr.CreateRoom(3)
 
 end
 

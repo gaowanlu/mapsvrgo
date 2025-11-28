@@ -6,11 +6,11 @@ PlayerMgr["players"] = PlayerMgr["players"] or {}
 
 function PlayerMgr.CreatePlayer(playerId)
     if PlayerMgr.players[playerId] then
-        Log:Error("已经存在Player %d", playerId)
+        Log:Error("Already exists Player playerId %d", playerId)
         return PlayerMgr.players[playerId]
     end
 
-    Log:Error("未存在Player %d", playerId)
+    Log:Error("Create new Player playerId[%d]", playerId)
     local player = Player.new(playerId)
     PlayerMgr.players[playerId] = player
     return player
@@ -22,6 +22,7 @@ end
 
 function PlayerMgr.RemovePlayer(playerId)
     PlayerMgr.players[playerId] = nil
+    Log:Error("RemovePlayer from PlayerMgr playerId %d", playerId);
 end
 
 function PlayerMgr.OnTick()
@@ -33,6 +34,9 @@ end
 
 function PlayerMgr.OnStop()
     Log:Error("PlayerMgr OnStop")
+    for playerId, player in pairs(PlayerMgr.players) do
+        PlayerMgr.RemovePlayer(playerId);
+    end
 end
 
 return PlayerMgr
