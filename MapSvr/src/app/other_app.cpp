@@ -100,6 +100,7 @@ void other_app::on_other_tunnel(avant::workers::other &other_obj, const ProtoPac
             return;
         }
         uint64_t fromGid = worker2OtherVMPackage.gid();
+        int worker_idx = worker2OtherVMPackage.workeridx();
 
         LOG_ERROR("client conngid %llu send cmd[%d]", fromGid, worker2OtherVMPackage.innerprotopackage().cmd());
         // 交给LuaVM处理
@@ -122,7 +123,8 @@ void other_app::on_other_tunnel(avant::workers::other &other_obj, const ProtoPac
 
         utility::singleton<lua_plugin>::instance()->on_other_lua_vm_recv_client_message(cmd,
                                                                                         *ptrMessage,
-                                                                                        fromGid);
+                                                                                        fromGid,
+                                                                                        worker_idx);
     }
     else
     {

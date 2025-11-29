@@ -340,9 +340,12 @@ void lua_plugin::exe_OnLuaVMRecvMessage(lua_State *lua_state, int cmd, const goo
     ASSERT_LOG_EXIT(isok == LUA_OK);
 }
 
-void lua_plugin::on_other_lua_vm_recv_client_message(int cmd, const google::protobuf::Message &package, uint64_t gid)
+void lua_plugin::on_other_lua_vm_recv_client_message(int cmd,
+                                                     const google::protobuf::Message &package,
+                                                     uint64_t gid,
+                                                     int worker_idx)
 {
-    exe_OnLuaVMRecvMessage(other_lua_state, cmd, package, gid, 0);
+    exe_OnLuaVMRecvMessage(other_lua_state, cmd, package, gid, worker_idx);
 }
 
 void lua_plugin::on_other_init()

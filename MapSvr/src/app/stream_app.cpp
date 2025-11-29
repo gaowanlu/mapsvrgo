@@ -122,6 +122,8 @@ void stream_app::on_recv_package(avant::connection::stream_ctx &ctx, const Proto
 {
     ProtoTunnelWorker2OtherLuaVM worker2OtherLuaVMPkg;
     worker2OtherLuaVMPkg.set_gid(ctx.get_conn_gid());
+    worker2OtherLuaVMPkg.set_workeridx(ctx.get_worker_id());
+
     *worker2OtherLuaVMPkg.mutable_innerprotopackage() = package;
     ProtoPackage resPackage;
     ctx.tunnel_forward(

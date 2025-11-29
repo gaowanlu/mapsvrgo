@@ -62,5 +62,6 @@ message ProtoTunnelOther2WorkerTest
 message ProtoTunnelWorker2OtherLuaVM
 {
     uint64 gid = 1;
-    ProtoPackage innerProtoPackage = 2;
+    int32 workerIdx = 2;
+    ProtoPackage innerProtoPackage = 3;
 };
