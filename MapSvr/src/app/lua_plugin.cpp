@@ -348,8 +348,9 @@ void lua_plugin::on_other_lua_vm_recv_client_message(int cmd,
     exe_OnLuaVMRecvMessage(other_lua_state, cmd, package, gid, worker_idx);
 }
 
-void lua_plugin::on_other_init()
+void lua_plugin::on_other_init(avant::workers::other *ptr_other_obj)
 {
+    this->ptr_other_obj = ptr_other_obj;
     {
         this->other_lua_state = luaL_newstate();
         luaL_openlibs(this->other_lua_state);
@@ -531,16 +532,23 @@ int lua_plugin::Logger(lua_State *lua_state)
 int lua_plugin::Lua2Protobuf(lua_State *lua_state)
 {
     int num = lua_gettop(lua_state);
-    ASSERT_LOG_EXIT(num == 2);
+    ASSERT_LOG_EXIT(num == 4);
 
-    int isok = lua_isinteger(lua_state, 2);
+    int isok = lua_isinteger(lua_state, 4);
     ASSERT_LOG_EXIT(isok);
-
-    int cmd = lua_tointeger(lua_state, 2);
-    lua_pop(lua_state, 1); // 弹出cmd
-
+    isok = lua_isinteger(lua_state, 3);
+    ASSERT_LOG_EXIT(isok);
+    isok = lua_isinteger(lua_state, 2);
+    ASSERT_LOG_EXIT(isok);
     isok = lua_istable(lua_state, 1);
     ASSERT_LOG_EXIT(isok);
+
+    uint64_t param2 = lua_tointeger(lua_state, 4);
+    lua_pop(lua_state, 1); // 弹出param2
+    uint64_t param1 = lua_tointeger(lua_state, 3);
+    lua_pop(lua_state, 1); // 弹出param1
+    int cmd = lua_tointeger(lua_state, 2);
+    lua_pop(lua_state, 1); // 弹出cmd
 
     int old_lua_stack_size = lua_gettop(lua_state);
 
@@ -553,9 +561,14 @@ int lua_plugin::Lua2Protobuf(lua_State *lua_state)
         int new_lua_stack_size = lua_gettop(lua_state);
         ASSERT_LOG_EXIT(old_lua_stack_size == new_lua_stack_size);
 
-        LOG_LUA_PLUGIN_RUNTIME("Lua2Protobuf Print\n%s", msg_ptr->DebugString().c_str());
+        LOG_LUA_PLUGIN_RUNTIME("Lua2Protobuf Print cmd[%d] param1[%llu] param2[%llu] \n%s",
+                               cmd,
+                               param1,
+                               param2,
+                               msg_ptr->DebugString().c_str());
 
         // 在这里处理lua发来的包
+        // singleton<lua_plugin>::instance()->;
 
         new_lua_stack_size = lua_gettop(lua_state);
         ASSERT_LOG_EXIT(old_lua_stack_size == new_lua_stack_size);

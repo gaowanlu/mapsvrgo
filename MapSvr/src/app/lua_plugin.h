@@ -3,6 +3,7 @@
 #include <memory>
 #include <unordered_map>
 #include "proto/proto_util.h"
+#include "workers/other.h"
 
 extern "C"
 {
@@ -44,7 +45,7 @@ namespace avant::app
                                                  uint64_t gid,
                                                  int worker_idx);
 
-        void on_other_init();
+        void on_other_init(avant::workers::other *ptr_other_obj);
         void on_other_stop();
         void on_other_tick();
         void exe_OnOtherInit();
@@ -85,6 +86,8 @@ namespace avant::app
 
         lua_State *other_lua_state{nullptr};
         bool other_lua_state_be_reload{false};
+
+        avant::workers::other *ptr_other_obj{nullptr};
 
         std::string lua_dir;
 

@@ -27,7 +27,7 @@ static avant_authenticated_ipc_pair authenticated_ipc_pair;
 void other_app::on_other_init(avant::workers::other &other_obj)
 {
     LOG_ERROR("other_app::on_other_init()");
-    utility::singleton<lua_plugin>::instance()->on_other_init();
+    utility::singleton<lua_plugin>::instance()->on_other_init(&other_obj);
 }
 
 void other_app::on_other_stop(avant::workers::other &other_obj)

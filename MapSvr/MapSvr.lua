@@ -96,7 +96,8 @@ function MapSvr.OnLuaVMRecvMessage(cmd, message, param1, param2)
             local t = {
                 ["testContext"] = message["testContext"]
             };
-            avant.Lua2Protobuf(t, 1);
+            -- message cmd param1 param2
+            avant.Lua2Protobuf(t, 1, clientGID, workerIdx);
         end
     end
 
