@@ -83,9 +83,14 @@ function MapSvr.OnLuaVMRecvMessage(cmd, message, param1, param2)
     end
 
     Log:Error("OnLuaVMRecvMessage cmd[%d] param1[%d] param2[%d]", cmd, param1, param2)
-    -- ProtoCmd::PROTO_CMD_CS_REQ_EXAMPLE = 0;
-    if cmd == 0 then
-        Log:Error("OnLuaVMRecvMessage cmd[%d] %s", cmd, DebugTableToString(message));
+
+    -- 客户端发来得消息
+    if param1 ~= 0 then
+        local clientGID = param1
+        -- ProtoCmd::PROTO_CMD_CS_REQ_EXAMPLE = 0;
+        if cmd == 0 then
+            Log:Error("OnLuaVMRecvMessage cmd[%d] clientGID[%d] %s", cmd, clientGID, DebugTableToString(message));
+        end
     end
 
 end
