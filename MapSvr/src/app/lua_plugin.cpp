@@ -2,10 +2,12 @@
 #include <avant-log/logger.h>
 #include <string>
 #include <cstdlib>
+#include <vector>
 #include "proto/proto_util.h"
 #include "proto_res/proto_lua.pb.h"
 #include "proto_res/proto_example.pb.h"
 #include "utility/singleton.h"
+#include "global/tunnel_id.h"
 #include <stack>
 #include <chrono>
 
@@ -13,8 +15,8 @@ using namespace avant::app;
 using namespace avant::utility;
 
 // 屏蔽所有调试日志
-// #define LOG_LUA_PLUGIN_RUNTIME(...) ((void)0)
-#define LOG_LUA_PLUGIN_RUNTIME(...) LOG_DEBUG(__VA_ARGS__)
+#define LOG_LUA_PLUGIN_RUNTIME(...) ((void)0)
+// #define LOG_LUA_PLUGIN_RUNTIME(...) LOG_DEBUG(__VA_ARGS__)
 
 lua_plugin::lua_plugin()
 {
@@ -568,7 +570,14 @@ int lua_plugin::Lua2Protobuf(lua_State *lua_state)
                                msg_ptr->DebugString().c_str());
 
         // 在这里处理lua发来的包
-        // singleton<lua_plugin>::instance()->;
+        ProtoTunnelOtherLuaVM2WorkerConn tunnelOtherVM2WorkerConn;
+        tunnelOtherVM2WorkerConn.set_gid(param1);
+        tunnelOtherVM2WorkerConn.set_workeridx(param2);
+        tunnelOtherVM2WorkerConn.mutable_innerprotopackage()->set_cmd((avant::ProtoCmd)cmd);
+        ProtoPackage resPackage;
+        singleton<lua_plugin>::instance()->ptr_other_obj->tunnel_forward(
+            std::vector{avant::global::tunnel_id::get().get_worker_tunnel_id(param2)},
+            avant::proto::pack_package(resPackage, tunnelOtherVM2WorkerConn, ProtoCmd::PROTO_CMD_TUNNEL_OTHERLUAVM2WORKERCONN));
 
         new_lua_stack_size = lua_gettop(lua_state);
         ASSERT_LOG_EXIT(old_lua_stack_size == new_lua_stack_size);

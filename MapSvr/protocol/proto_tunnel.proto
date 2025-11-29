@@ -66,3 +66,11 @@ message ProtoTunnelWorker2OtherLuaVM
     int32 workerIdx = 2;
     ProtoPackage innerProtoPackage = 3;
 };
+
+// PROTO_CMD_TUNNEL_OTHERLUAVM2WORKERCONN
+message ProtoTunnelOtherLuaVM2WorkerConn
+{
+    uint64 gid = 1;
+    int32 workerIdx = 2;
+    ProtoPackage innerProtoPackage = 3;
+};

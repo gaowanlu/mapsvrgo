@@ -148,15 +148,23 @@ int stream_app::send_sync_package(avant::connection::stream_ctx &ctx, const Prot
 void stream_app::on_worker_tunnel(avant::workers::worker &worker_obj, const ProtoPackage &package, const ProtoTunnelPackage &tunnel_package)
 {
     int cmd = package.cmd();
-    if (cmd == ProtoCmd::PROTO_CMD_TUNNEL_OTHER2WORKER_TEST)
+    if (cmd == ProtoCmd::PROTO_CMD_TUNNEL_OTHERLUAVM2WORKERCONN)
     {
-        ProtoTunnelOther2WorkerTest other2worker_test;
-        if (!proto::parse(other2worker_test, package))
+        ProtoTunnelOtherLuaVM2WorkerConn tunnelOtherLuaVM2WorkerConn;
+        if (!proto::parse(tunnelOtherLuaVM2WorkerConn, package))
         {
-            LOG_ERROR("proto::parse(other2worker_test, package) failed");
+            LOG_ERROR("proto::parse(tunnelOtherLuaVM2WorkerConn, package) failed");
             return;
         }
-        // LOG_ERROR("worker_id %d PROTO_CMD_TUNNEL_OTHER2WORKER_TEST time %llu", worker_obj.worker_id, other2worker_test.time());
+        uint64_t gid = tunnelOtherLuaVM2WorkerConn.gid();
+        int worker_idx = tunnelOtherLuaVM2WorkerConn.workeridx();
+        int cmd = tunnelOtherLuaVM2WorkerConn.innerprotopackage().cmd();
+        worker_obj.send_client_forward_message(gid, {gid}, *tunnelOtherLuaVM2WorkerConn.mutable_innerprotopackage());
+
+        // LOG_ERROR("stream_app::on_worker_tunnel gid %llu worker_idx %d real_worker_idx %d cmd %d", gid, worker_idx, worker_obj.get_worker_id(), cmd);
+    }
+    else if (cmd == ProtoCmd::PROTO_CMD_TUNNEL_OTHER2WORKER_TEST)
+    {
     }
     else
     {
@@ -171,17 +179,9 @@ void stream_app::on_client_forward_message(avant::connection::stream_ctx &ctx,
                                            const ProtoTunnelPackage &tunnel_package)
 {
     int cmd = message.innerprotopackage().cmd();
-    if (cmd == ProtoCmd::PROTO_CMD_CS_RES_EXAMPLE)
-    {
-        if (self)
-        {
-            stream_app::send_sync_package(ctx, message.innerprotopackage());
-        }
-    }
-    else
-    {
-        LOG_ERROR("not exist handler %d", cmd);
-    }
+
+    stream_app::send_sync_package(ctx, message.innerprotopackage());
+    // LOG_ERROR("on_client_forward_message cmd %d", cmd);
 }
 
 void stream_app::on_cmd_reload(avant::server::server &server_obj)

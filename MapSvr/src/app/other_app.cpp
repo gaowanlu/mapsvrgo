@@ -102,7 +102,7 @@ void other_app::on_other_tunnel(avant::workers::other &other_obj, const ProtoPac
         uint64_t fromGid = worker2OtherVMPackage.gid();
         int worker_idx = worker2OtherVMPackage.workeridx();
 
-        LOG_ERROR("client conngid %llu send cmd[%d]", fromGid, worker2OtherVMPackage.innerprotopackage().cmd());
+        // LOG_ERROR("client conngid %llu send cmd[%d]", fromGid, worker2OtherVMPackage.innerprotopackage().cmd());
         // 交给LuaVM处理
         avant::ProtoCmd cmd = worker2OtherVMPackage.innerprotopackage().cmd();
 
