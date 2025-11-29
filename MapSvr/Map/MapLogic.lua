@@ -19,7 +19,7 @@ function Map:GetMapDbData()
 end
 
 function Map:OnTick()
-    Log:Error("MapId %d", self:GetMapDbData().id)
+    -- Log:Error("MapId %d", self:GetMapDbData().id)
 end
 
 return Map;

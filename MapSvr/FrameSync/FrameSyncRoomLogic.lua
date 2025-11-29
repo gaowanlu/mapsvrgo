@@ -18,7 +18,7 @@ function FrameSyncRoom:GetFrameSyncRoomDbData()
 end
 
 function FrameSyncRoom:OnTick()
-    Log:Error("FrameSyncRoom %d", self:GetFrameSyncRoomDbData().id)
+    -- Log:Error("FrameSyncRoom %d", self:GetFrameSyncRoomDbData().id)
 end
 
 return FrameSyncRoom;

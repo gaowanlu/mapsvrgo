@@ -13,8 +13,8 @@ using namespace avant::app;
 using namespace avant::utility;
 
 // 屏蔽所有调试日志
-#define LOG_LUA_PLUGIN_RUNTIME(...) ((void)0)
-// #define LOG_LUA_PLUGIN_RUNTIME(...) LOG_DEBUG(__VA_ARGS__)
+// #define LOG_LUA_PLUGIN_RUNTIME(...) ((void)0)
+#define LOG_LUA_PLUGIN_RUNTIME(...) LOG_DEBUG(__VA_ARGS__)
 
 lua_plugin::lua_plugin()
 {
@@ -550,10 +550,9 @@ int lua_plugin::Lua2Protobuf(lua_State *lua_state)
         int new_lua_stack_size = lua_gettop(lua_state);
         ASSERT_LOG_EXIT(old_lua_stack_size == new_lua_stack_size);
 
-        LOG_LUA_PLUGIN_RUNTIME("ProtoLuaTest\n%s", proto_lua_test.DebugString().c_str());
+        LOG_LUA_PLUGIN_RUNTIME("Lua2Protobuf Print\n%s", msg_ptr->DebugString().c_str());
 
-        // 模拟向lua发包
-        // exe_OnLuaVMRecvMessage(lua_state, cmd, *msg_ptr);
+        // 在这里处理lua发来的包
 
         new_lua_stack_size = lua_gettop(lua_state);
         ASSERT_LOG_EXIT(old_lua_stack_size == new_lua_stack_size);
@@ -1371,4 +1370,6 @@ void lua_plugin::init_message_factory()
     { return std::make_shared<ProtoLuaTest>(); };
     this->message_factory[ProtoCmd::PROTO_CMD_CS_REQ_EXAMPLE] = []()
     { return std::make_shared<ProtoCSReqExample>(); };
+    this->message_factory[ProtoCmd::PROTO_CMD_CS_RES_EXAMPLE] = []()
+    { return std::make_shared<ProtoCSResExample>(); };
 }

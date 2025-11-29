@@ -50,7 +50,7 @@ function Player:GetPlayerID()
 end
 
 function Player:OnTick()
-    Log:Error("PlayerId %d", self:GetRoleDbData().id)
+    -- Log:Error("PlayerId %d", self:GetRoleDbData().id)
     self.RoleDbData.x = self.RoleDbData.x + 1
     self.RoleDbData.y = self.RoleDbData.y + 1
     if self.RoleDbData.x > 1000 then
