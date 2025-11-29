@@ -54,11 +54,40 @@ function MapSvr.OnReload()
 
 end
 
-function MapSvr.OnLuaVMRecvMessage(cmd, message)
-    -- ProtoCmd::PROTO_CMD_DB_PLAYER = 10;
-    -- if cmd == 10 then
-    --     -- Log:Error("PROTO_CMD_DB_PLAYER cmd %d message %s", cmd, Debug:DebugTableToString(message))
-    -- end
+function MapSvr.OnLuaVMRecvMessage(cmd, message, param1, param2)
+
+    function DebugTableToString(t, indent)
+        if type(t) == "string" then
+            return "\"" .. tostring(t) .. "\""
+        end
+
+        if type(t) ~= "table" then
+            return tostring(t)
+        end
+
+        indent = indent or 0
+        local prefix = string.rep("  ", indent)
+        local str = "{\n"
+        for k, v in pairs(t) do
+            local key = tostring(k)
+            local valueStr
+            if type(v) == "table" then
+                valueStr = DebugTableToString(v, indent + 1)
+            else
+                valueStr = DebugTableToString(v)
+            end
+            str = str .. prefix .. "  [\"" .. key .. "\"] = " .. valueStr .. ",\n"
+        end
+        str = str .. prefix .. "}"
+        return str
+    end
+
+    Log:Error("OnLuaVMRecvMessage cmd[%d] param1[%d] param2[%d]", cmd, param1, param2)
+    -- ProtoCmd::PROTO_CMD_CS_REQ_EXAMPLE = 0;
+    if cmd == 0 then
+        Log:Error("OnLuaVMRecvMessage cmd[%d] %s", cmd, DebugTableToString(message));
+    end
+
 end
 
 return MapSvr

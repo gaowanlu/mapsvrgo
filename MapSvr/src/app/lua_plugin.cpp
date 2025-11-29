@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include "proto/proto_util.h"
 #include "proto_res/proto_lua.pb.h"
+#include "proto_res/proto_example.pb.h"
 #include "utility/singleton.h"
 #include <stack>
 #include <chrono>
@@ -287,7 +288,7 @@ void lua_plugin::exe_OnWorkerReload(int worker_idx)
     ASSERT_LOG_EXIT(LUA_OK == isok);
 }
 
-void lua_plugin::exe_OnLuaVMRecvMessage(lua_State *lua_state, int cmd, const google::protobuf::Message &package)
+void lua_plugin::exe_OnLuaVMRecvMessage(lua_State *lua_state, int cmd, const google::protobuf::Message &package, uint64_t param1, uint64_t param2)
 {
     lua_plugin *lua_plugin_ptr = singleton<lua_plugin>::instance();
 
@@ -332,8 +333,16 @@ void lua_plugin::exe_OnLuaVMRecvMessage(lua_State *lua_state, int cmd, const goo
     int new_lua_stack_size = lua_gettop(lua_state);
     ASSERT_LOG_EXIT(new_lua_stack_size == old_lua_stack_size + 1);
 
-    isok = lua_pcall(lua_state, 6, 0, 0);
+    lua_pushinteger(lua_state, param1);
+    lua_pushinteger(lua_state, param2);
+
+    isok = lua_pcall(lua_state, 8, 0, 0);
     ASSERT_LOG_EXIT(isok == LUA_OK);
+}
+
+void lua_plugin::on_other_lua_vm_recv_client_message(int cmd, const google::protobuf::Message &package, uint64_t gid)
+{
+    exe_OnLuaVMRecvMessage(other_lua_state, cmd, package, gid, 0);
 }
 
 void lua_plugin::on_other_init()
@@ -544,7 +553,7 @@ int lua_plugin::Lua2Protobuf(lua_State *lua_state)
         LOG_LUA_PLUGIN_RUNTIME("ProtoLuaTest\n%s", proto_lua_test.DebugString().c_str());
 
         // 模拟向lua发包
-        exe_OnLuaVMRecvMessage(lua_state, cmd, *msg_ptr);
+        // exe_OnLuaVMRecvMessage(lua_state, cmd, *msg_ptr);
 
         new_lua_stack_size = lua_gettop(lua_state);
         ASSERT_LOG_EXIT(old_lua_stack_size == new_lua_stack_size);
@@ -1360,4 +1369,6 @@ void lua_plugin::init_message_factory()
 {
     this->message_factory[ProtoCmd::PROTO_CMD_LUA_TEST] = []()
     { return std::make_shared<ProtoLuaTest>(); };
+    this->message_factory[ProtoCmd::PROTO_CMD_CS_REQ_EXAMPLE] = []()
+    { return std::make_shared<ProtoCSReqExample>(); };
 }

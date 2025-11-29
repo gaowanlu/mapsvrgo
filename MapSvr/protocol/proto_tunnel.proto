@@ -58,3 +58,9 @@ message ProtoTunnelOther2WorkerTest
 {
     uint64 time = 1;
 };
+
+message ProtoTunnelWorker2OtherLuaVM
+{
+    uint64 gid = 1;
+    ProtoPackage innerProtoPackage = 2;
+};

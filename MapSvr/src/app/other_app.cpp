@@ -90,23 +90,43 @@ void other_app::on_other_tick(avant::workers::other &other_obj)
 
 void other_app::on_other_tunnel(avant::workers::other &other_obj, const ProtoPackage &package, const ProtoTunnelPackage &tunnel_package)
 {
-    if constexpr (false)
+    if (package.cmd() == ProtoCmd::PROOT_CMD_TUNNEL_WORKER2OTHER_LUAVM)
     {
-        int sourcetunnelsid = tunnel_package.sourcetunnelsid();
-        std::string targettunnelsid;
-
-        for (int i = 0; i < tunnel_package.targettunnelsid().size(); i++)
+        ProtoTunnelWorker2OtherLuaVM worker2OtherVMPackage;
+        bool ret = avant::proto::parse(worker2OtherVMPackage, package);
+        if (!ret)
         {
-            targettunnelsid += std::to_string(tunnel_package.targettunnelsid().at(i)) + "_";
+            LOG_ERROR("parse worker2OtherVMPackage from package failed");
+            return;
+        }
+        uint64_t fromGid = worker2OtherVMPackage.gid();
+
+        LOG_ERROR("client conngid %llu send cmd[%d]", fromGid, worker2OtherVMPackage.innerprotopackage().cmd());
+        // 交给LuaVM处理
+        avant::ProtoCmd cmd = worker2OtherVMPackage.innerprotopackage().cmd();
+
+        // 必须写解包操作
+        std::shared_ptr<google::protobuf::Message> ptrMessage = utility::singleton<lua_plugin>::instance()->protobuf_cmd2message(cmd);
+        if (!ptrMessage)
+        {
+            LOG_ERROR("other_app::on_other_tunnel unknow cmd %d", cmd);
+            return;
         }
 
-        int targetallworker = tunnel_package.targetallworker();
+        ret = avant::proto::parse(*ptrMessage, worker2OtherVMPackage.innerprotopackage());
+        if (!ret)
+        {
+            LOG_ERROR("other_app::on_other_tunnel unknow cmd %d", cmd);
+            return;
+        }
 
-        LOG_ERROR("other_app::on_other_tunnel() CMD %d sourcetunnelsid %d targettunnelsid %s targetallworker %d",
-                  package.cmd(),
-                  sourcetunnelsid,
-                  targettunnelsid.c_str(),
-                  targetallworker);
+        utility::singleton<lua_plugin>::instance()->on_other_lua_vm_recv_client_message(cmd,
+                                                                                        *ptrMessage,
+                                                                                        fromGid);
+    }
+    else
+    {
+        LOG_ERROR("other_app::on_other_tunnel unknow cmd %d", package.cmd());
     }
 }
 

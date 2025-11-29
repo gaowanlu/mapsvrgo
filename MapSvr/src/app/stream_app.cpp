@@ -120,23 +120,13 @@ void stream_app::on_process_connection(avant::connection::stream_ctx &ctx)
 
 void stream_app::on_recv_package(avant::connection::stream_ctx &ctx, const ProtoPackage &package)
 {
-    if (package.cmd() == ProtoCmd::PROTO_CMD_CS_REQ_EXAMPLE)
-    {
-        ProtoCSReqExample req;
-        if (avant::proto::parse(req, package))
-        {
-            ProtoPackage resPackage;
-            ProtoCSResExample res;
-            res.set_testcontext(req.testcontext());
-
-            // broadcast all connection in the process including this ctx self, async
-            // ctx.worker_send_client_forward_message(ctx.get_conn_gid(), std::set<uint64_t>{}, avant::proto::pack_package(resPackage, res, ProtoCmd::PROTO_CMD_CS_RES_EXAMPLE));
-
-            // send_sync_package(ctx, avant::proto::pack_package(resPackage, res, ProtoCmd::PROTO_CMD_CS_RES_EXAMPLE));
-
-            ctx.worker_send_client_forward_message(ctx.get_conn_gid(), std::set<uint64_t>{ctx.get_conn_gid()}, avant::proto::pack_package(resPackage, res, ProtoCmd::PROTO_CMD_CS_RES_EXAMPLE));
-        }
-    }
+    ProtoTunnelWorker2OtherLuaVM worker2OtherLuaVMPkg;
+    worker2OtherLuaVMPkg.set_gid(ctx.get_conn_gid());
+    *worker2OtherLuaVMPkg.mutable_innerprotopackage() = package;
+    ProtoPackage resPackage;
+    ctx.tunnel_forward(
+        std::vector{avant::global::tunnel_id::get().get_other_tunnel_id()},
+        avant::proto::pack_package(resPackage, worker2OtherLuaVMPkg, ProtoCmd::PROOT_CMD_TUNNEL_WORKER2OTHER_LUAVM));
 }
 
 int stream_app::send_sync_package(avant::connection::stream_ctx &ctx, const ProtoPackage &package)
