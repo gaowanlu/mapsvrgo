@@ -42,8 +42,8 @@ function Other:OnReload()
     MapSvr.OnReload()
 end
 
-function Other:OnLuaVMRecvMessage(cmd, message, param1, param2)
-    MapSvr.OnLuaVMRecvMessage(cmd, message, param1, param2)
+function Other:OnLuaVMRecvMessage(cmd, message, uint64_param1, int64_param2, str_param3)
+    MapSvr.OnLuaVMRecvMessage(cmd, message, uint64_param1, int64_param2, str_param3)
 end
 
 return Other;

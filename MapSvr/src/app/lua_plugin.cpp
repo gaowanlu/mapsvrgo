@@ -290,7 +290,12 @@ void lua_plugin::exe_OnWorkerReload(int worker_idx)
     ASSERT_LOG_EXIT(LUA_OK == isok);
 }
 
-void lua_plugin::exe_OnLuaVMRecvMessage(lua_State *lua_state, int cmd, const google::protobuf::Message &package, uint64_t param1, uint64_t param2)
+void lua_plugin::exe_OnLuaVMRecvMessage(lua_State *lua_state,
+                                        int cmd,
+                                        const google::protobuf::Message &package,
+                                        uint64_t uint64_param1,
+                                        int64_t int64_param2,
+                                        const std::string &str_param3)
 {
     lua_plugin *lua_plugin_ptr = singleton<lua_plugin>::instance();
 
@@ -335,19 +340,26 @@ void lua_plugin::exe_OnLuaVMRecvMessage(lua_State *lua_state, int cmd, const goo
     int new_lua_stack_size = lua_gettop(lua_state);
     ASSERT_LOG_EXIT(new_lua_stack_size == old_lua_stack_size + 1);
 
-    lua_pushinteger(lua_state, param1);
-    lua_pushinteger(lua_state, param2);
+    lua_pushinteger(lua_state, uint64_param1);
+    lua_pushinteger(lua_state, int64_param2);
+    lua_pushstring(lua_state, str_param3.c_str());
 
-    isok = lua_pcall(lua_state, 8, 0, 0);
+    isok = lua_pcall(lua_state, 9, 0, 0);
     ASSERT_LOG_EXIT(isok == LUA_OK);
 }
 
 void lua_plugin::on_other_lua_vm_recv_client_message(int cmd,
                                                      const google::protobuf::Message &package,
                                                      uint64_t gid,
-                                                     int worker_idx)
+                                                     int worker_idx,
+                                                     const std::string &app_id)
 {
-    exe_OnLuaVMRecvMessage(other_lua_state, cmd, package, gid, worker_idx);
+    exe_OnLuaVMRecvMessage(other_lua_state,
+                           cmd,
+                           package,
+                           gid,
+                           worker_idx,
+                           app_id);
 }
 
 void lua_plugin::on_other_init(avant::workers::other *ptr_other_obj)
@@ -545,16 +557,15 @@ int lua_plugin::Lua2Protobuf(lua_State *lua_state)
     isok = lua_istable(lua_state, 1);
     ASSERT_LOG_EXIT(isok);
 
-    uint64_t param2 = lua_tointeger(lua_state, 4);
+    int64_t int64_param2 = lua_tointeger(lua_state, 4);
     lua_pop(lua_state, 1); // 弹出param2
-    uint64_t param1 = lua_tointeger(lua_state, 3);
+    uint64_t uint64_param1 = lua_tointeger(lua_state, 3);
     lua_pop(lua_state, 1); // 弹出param1
     int cmd = lua_tointeger(lua_state, 2);
     lua_pop(lua_state, 1); // 弹出cmd
 
     int old_lua_stack_size = lua_gettop(lua_state);
 
-    // 注意应该把消息通过管道传输而不是直接调用exe_onLuaVMRecvMessage不然可能造成递归
     std::shared_ptr<google::protobuf::Message> msg_ptr = singleton<lua_plugin>::instance()->protobuf_cmd2message(cmd);
     if (msg_ptr)
     {
@@ -570,14 +581,20 @@ int lua_plugin::Lua2Protobuf(lua_State *lua_state)
                                msg_ptr->DebugString().c_str());
 
         // 在这里处理lua发来的包
-        ProtoTunnelOtherLuaVM2WorkerConn tunnelOtherVM2WorkerConn;
-        tunnelOtherVM2WorkerConn.set_gid(param1);
-        tunnelOtherVM2WorkerConn.set_workeridx(param2);
-        tunnelOtherVM2WorkerConn.mutable_innerprotopackage()->set_cmd((avant::ProtoCmd)cmd);
-        ProtoPackage resPackage;
-        singleton<lua_plugin>::instance()->ptr_other_obj->tunnel_forward(
-            std::vector{avant::global::tunnel_id::get().get_worker_tunnel_id(param2)},
-            avant::proto::pack_package(resPackage, tunnelOtherVM2WorkerConn, ProtoCmd::PROTO_CMD_TUNNEL_OTHERLUAVM2WORKERCONN));
+        if (uint64_param1 > 0) // 发给客户端连接的包
+        {
+            ProtoTunnelOtherLuaVM2WorkerConn tunnelOtherVM2WorkerConn;
+            tunnelOtherVM2WorkerConn.set_gid(uint64_param1);
+            tunnelOtherVM2WorkerConn.set_workeridx(int64_param2);
+            tunnelOtherVM2WorkerConn.mutable_innerprotopackage()->set_cmd((avant::ProtoCmd)cmd);
+            ProtoPackage resPackage;
+            singleton<lua_plugin>::instance()->ptr_other_obj->tunnel_forward(
+                std::vector{avant::global::tunnel_id::get().get_worker_tunnel_id(int64_param2)},
+                avant::proto::pack_package(resPackage, tunnelOtherVM2WorkerConn, ProtoCmd::PROTO_CMD_TUNNEL_OTHERLUAVM2WORKERCONN));
+        }
+        else // 发给其他进程的
+        {
+        }
 
         new_lua_stack_size = lua_gettop(lua_state);
         ASSERT_LOG_EXIT(old_lua_stack_size == new_lua_stack_size);

@@ -9,6 +9,7 @@
 #include "proto/proto_util.h"
 #include "proto_res/proto_example.pb.h"
 #include "proto_res/proto_ipc_stream.pb.h"
+#include "proto_res/proto_tunnel.pb.h"
 #include <unordered_map>
 
 using avant::app::other_app;
@@ -18,8 +19,13 @@ namespace global = avant::global;
 class avant_authenticated_ipc_pair
 {
 public:
+    avant_authenticated_ipc_pair()
+    {
+        this->other_obj = nullptr;
+    }
     std::unordered_map<uint64_t, std::string> gid2appid;
     std::unordered_map<std::string, uint64_t> appid2gid;
+    avant::workers::other *other_obj;
 };
 
 static avant_authenticated_ipc_pair authenticated_ipc_pair;
@@ -27,6 +33,11 @@ static avant_authenticated_ipc_pair authenticated_ipc_pair;
 void other_app::on_other_init(avant::workers::other &other_obj)
 {
     LOG_ERROR("other_app::on_other_init()");
+    if (!authenticated_ipc_pair.other_obj)
+    {
+        authenticated_ipc_pair.other_obj = &other_obj;
+    }
+
     utility::singleton<lua_plugin>::instance()->on_other_init(&other_obj);
 }
 
@@ -124,7 +135,8 @@ void other_app::on_other_tunnel(avant::workers::other &other_obj, const ProtoPac
         utility::singleton<lua_plugin>::instance()->on_other_lua_vm_recv_client_message(cmd,
                                                                                         *ptrMessage,
                                                                                         fromGid,
-                                                                                        worker_idx);
+                                                                                        worker_idx,
+                                                                                        "");
     }
     else
     {
@@ -216,27 +228,7 @@ void other_app::on_process_connection(avant::connection::ipc_stream_ctx &ctx)
 void other_app::on_recv_package(avant::connection::ipc_stream_ctx &ctx, const ProtoPackage &package)
 {
     // LOG_ERROR("ipc_stream_ctx gid %llu cmd %d", ctx.get_conn_gid(), package.cmd());
-    if (package.cmd() == ProtoCmd::PROTO_CMD_CS_REQ_EXAMPLE)
-    {
-        ProtoCSReqExample req;
-        if (avant::proto::parse(req, package))
-        {
-            ProtoPackage resPackage;
-            ProtoCSResExample res;
-            res.set_testcontext(req.testcontext());
-            std::string data;
-            ctx.send_data(avant::proto::pack_package(data, avant::proto::pack_package(resPackage, res, ProtoCmd::PROTO_CMD_CS_RES_EXAMPLE)));
-        }
-    }
-    else if (package.cmd() == ProtoCmd::PROTO_CMD_CS_RES_EXAMPLE)
-    {
-        ProtoCSResExample res;
-        if (avant::proto::parse(res, package))
-        {
-            // res.testcontext();
-        }
-    }
-    else if (package.cmd() == ProtoCmd::PROTO_CMD_IPC_STREAM_AUTH_HANDSHAKE)
+    if (package.cmd() == ProtoCmd::PROTO_CMD_IPC_STREAM_AUTH_HANDSHAKE)
     {
         // ipc auth
         // this <-- whoami -- remote
@@ -279,6 +271,34 @@ void other_app::on_recv_package(avant::connection::ipc_stream_ctx &ctx, const Pr
     }
     else
     {
-        LOG_ERROR("unknow cmd %d", package.cmd());
+        if (authenticated_ipc_pair.gid2appid.find(ctx.get_conn_gid()) == authenticated_ipc_pair.gid2appid.end())
+        {
+            LOG_ERROR("authenticated_ipc_pair.gid2appid.find(ctx.get_conn_gid()) == authenticated_ipc_pair.gid2appid.end()");
+            return;
+        }
+
+        const std::string &from_app_id_string = authenticated_ipc_pair.gid2appid.find(ctx.get_conn_gid())->second;
+        int worker_idx = avant::global::tunnel_id::get().get_other_tunnel_id();
+
+        // 必须写解包操作
+        std::shared_ptr<google::protobuf::Message> ptrMessage = utility::singleton<lua_plugin>::instance()->protobuf_cmd2message(package.cmd());
+        if (!ptrMessage)
+        {
+            LOG_ERROR("other_app::on_recv_package unknow cmd %d", package.cmd());
+            return;
+        }
+
+        bool ret = avant::proto::parse(*ptrMessage, package);
+        if (!ret)
+        {
+            LOG_ERROR("other_app::on_recv_package unknow cmd %d", package.cmd());
+            return;
+        }
+
+        utility::singleton<lua_plugin>::instance()->on_other_lua_vm_recv_client_message(package.cmd(),
+                                                                                        *ptrMessage,
+                                                                                        0,
+                                                                                        worker_idx,
+                                                                                        from_app_id_string);
     }
 }

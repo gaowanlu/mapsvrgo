@@ -54,7 +54,7 @@ function MapSvr.OnReload()
 
 end
 
-function MapSvr.OnLuaVMRecvMessage(cmd, message, param1, param2)
+function MapSvr.OnLuaVMRecvMessage(cmd, message, uint64_param1, int64_param2, str_param3)
 
     function DebugTableToString(t, indent)
         if type(t) == "string" then
@@ -82,12 +82,12 @@ function MapSvr.OnLuaVMRecvMessage(cmd, message, param1, param2)
         return str
     end
 
-    -- Log:Error("OnLuaVMRecvMessage cmd[%d] param1[%d] param2[%d]", cmd, param1, param2)
+    -- Log:Error("OnLuaVMRecvMessage cmd[%d] uint64_param1[%d] int64_param2[%d] str_param3[%s]", cmd, uint64_param1, int64_param2, str_param3)
 
     -- 客户端发来得消息
-    if param1 ~= 0 then
-        local clientGID = param1
-        local workerIdx = param2
+    if int64_param2 >= 0 then
+        local clientGID = uint64_param1
+        local workerIdx = int64_param2
         -- ProtoCmd::PROTO_CMD_CS_REQ_EXAMPLE = 0;
         if cmd == 0 then
             -- Log:Error("OnLuaVMRecvMessage cmd[%d] clientGID[%d] workerIdx[%d] %s", cmd, clientGID, workerIdx,
@@ -96,11 +96,13 @@ function MapSvr.OnLuaVMRecvMessage(cmd, message, param1, param2)
             local t = {
                 ["testContext"] = message["testContext"]
             };
-            -- message cmd param1 param2
+            -- message cmd uint64_param1 int64_param2
             avant.Lua2Protobuf(t, 1, clientGID, workerIdx);
         end
+    elseif int64_param2 == -1 then -- 进程间通过other通信
+        Log:Error("OnLuaVMRecvMessage cmd[%d] uint64_param1[%d] workerIdx[%d] app_id[%s] %s", cmd, uint64_param1,
+            int64_param2, str_param3, DebugTableToString(message))
     end
-
 end
 
 return MapSvr

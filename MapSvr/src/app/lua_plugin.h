@@ -39,11 +39,17 @@ namespace avant::app
         void exe_OnWorkerTick(int worker_idx);
         void exe_OnWorkerReload(int worker_idx);
 
-        static void exe_OnLuaVMRecvMessage(lua_State *lua_state, int cmd, const google::protobuf::Message &package, uint64_t param1, uint64_t param2);
+        static void exe_OnLuaVMRecvMessage(lua_State *lua_state,
+                                           int cmd,
+                                           const google::protobuf::Message &package,
+                                           uint64_t uint64_param1,
+                                           int64_t int64_param2,
+                                           const std::string &str_param3);
         void on_other_lua_vm_recv_client_message(int cmd,
                                                  const google::protobuf::Message &package,
                                                  uint64_t gid,
-                                                 int worker_idx);
+                                                 int worker_idx,
+                                                 const std::string &app_id);
 
         void on_other_init(avant::workers::other *ptr_other_obj);
         void on_other_stop();
