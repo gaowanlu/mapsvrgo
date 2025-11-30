@@ -74,3 +74,9 @@ message ProtoTunnelOtherLuaVM2WorkerConn
     int32 workerIdx = 2;
     ProtoPackage innerProtoPackage = 3;
 };
+
+// PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION
+message ProtoTunnelWorker2OtherEventCloseClientConnection
+{
+    uint64 gid = 3;
+};

@@ -98,6 +98,21 @@ function MapSvr.OnLuaVMRecvMessage(cmd, message, uint64_param1, int64_param2, st
             };
             -- message cmd uint64_param1 int64_param2
             avant.Lua2Protobuf(t, 1, clientGID, workerIdx, "");
+        elseif cmd == 6 then -- PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION=6
+            if message["gid"] ~= clientGID then
+                Log:Error('PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION message["gid"]%d ~= clientGID[%d]',
+                    message["gid"], clientGID);
+                return
+            end
+            Log:Error("New Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx);
+        elseif cmd == 12 then -- PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION=12
+            if message["gid"] ~= clientGID then
+                Log:Error(
+                    'PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION message["gid"]%d ~= clientGID[%d]',
+                    message["gid"], clientGID);
+                return
+            end
+            Log:Error("Close Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx);
         end
     elseif int64_param2 == -1 then -- 进程间通过other通信
         -- Log:Error("OnLuaVMRecvMessage cmd[%d] uint64_param1[%d] workerIdx[%d] app_id[%s] %s", cmd, uint64_param1,

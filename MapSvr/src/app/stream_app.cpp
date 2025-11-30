@@ -3,6 +3,8 @@
 #include "workers/worker.h"
 #include <avant-log/logger.h>
 #include "proto_res/proto_example.pb.h"
+#include "proto_res/proto_cmd.pb.h"
+#include "proto_res/proto_tunnel.pb.h"
 #include "proto/proto_util.h"
 #include "global/tunnel_id.h"
 #include "utility/singleton.h"
@@ -53,11 +55,43 @@ bool stream_app::on_recved_packsize(avant::connection::stream_ctx &ctx, uint64_t
 void stream_app::on_new_connection(avant::connection::stream_ctx &ctx)
 {
     // LOG_ERROR("stream_app on_new_connection gid %llu", ctx.get_conn_gid());
+    ProtoTunnelWorker2OtherLuaVM worker2OtherLuaVMPkg;
+    worker2OtherLuaVMPkg.set_gid(ctx.get_conn_gid());
+    worker2OtherLuaVMPkg.set_workeridx(ctx.get_worker_id());
+
+    {
+        ProtoPackage package;
+        ProtoTunnelWorker2OtherEventNewClientConnection protoNewConn;
+        protoNewConn.set_gid(ctx.get_conn_gid());
+        avant::proto::pack_package(package, protoNewConn, ProtoCmd::PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION);
+        *worker2OtherLuaVMPkg.mutable_innerprotopackage() = package;
+    }
+
+    ProtoPackage resPackage;
+    ctx.tunnel_forward(
+        std::vector{avant::global::tunnel_id::get().get_other_tunnel_id()},
+        avant::proto::pack_package(resPackage, worker2OtherLuaVMPkg, ProtoCmd::PROOT_CMD_TUNNEL_WORKER2OTHER_LUAVM));
 }
 
 void stream_app::on_close_connection(avant::connection::stream_ctx &ctx)
 {
     // LOG_ERROR("stream_app on_close_connection gid %llu", ctx.get_conn_gid());
+    ProtoTunnelWorker2OtherLuaVM worker2OtherLuaVMPkg;
+    worker2OtherLuaVMPkg.set_gid(ctx.get_conn_gid());
+    worker2OtherLuaVMPkg.set_workeridx(ctx.get_worker_id());
+
+    {
+        ProtoPackage package;
+        ProtoTunnelWorker2OtherEventCloseClientConnection protoCloseConn;
+        protoCloseConn.set_gid(ctx.get_conn_gid());
+        avant::proto::pack_package(package, protoCloseConn, ProtoCmd::PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION);
+        *worker2OtherLuaVMPkg.mutable_innerprotopackage() = package;
+    }
+
+    ProtoPackage resPackage;
+    ctx.tunnel_forward(
+        std::vector{avant::global::tunnel_id::get().get_other_tunnel_id()},
+        avant::proto::pack_package(resPackage, worker2OtherLuaVMPkg, ProtoCmd::PROOT_CMD_TUNNEL_WORKER2OTHER_LUAVM));
 }
 
 void stream_app::on_process_connection(avant::connection::stream_ctx &ctx)

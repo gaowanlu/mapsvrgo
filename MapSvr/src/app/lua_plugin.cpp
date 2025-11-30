@@ -1420,4 +1420,12 @@ void lua_plugin::init_message_factory()
     { return std::make_shared<ProtoCSReqExample>(); };
     this->message_factory[ProtoCmd::PROTO_CMD_CS_RES_EXAMPLE] = []()
     { return std::make_shared<ProtoCSResExample>(); };
+    this->message_factory[ProtoCmd::PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION] = []()
+    {
+        return std::make_shared<ProtoTunnelWorker2OtherEventNewClientConnection>();
+    };
+    this->message_factory[ProtoCmd::PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION] = []()
+    {
+        return std::make_shared<ProtoTunnelWorker2OtherEventCloseClientConnection>();
+    };
 }
