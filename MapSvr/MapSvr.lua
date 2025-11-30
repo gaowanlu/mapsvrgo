@@ -98,6 +98,12 @@ function MapSvr.OnLuaVMRecvMessage(cmd, message, uint64_param1, int64_param2, st
             };
             -- message cmd uint64_param1 int64_param2
             avant.Lua2Protobuf(t, 1, clientGID, workerIdx, "");
+            -- local closeConn = {
+            --     ["gid"] = clientGID,
+            --     ["workerIdx"] = workerIdx
+            -- };
+            -- -- PROTO_CMD_TUNNEL_OTHERLUAVM2WORKER_CLOSE_CLIENT_CONNECTION=13
+            -- avant.Lua2Protobuf(closeConn, 13, clientGID, workerIdx, "");
         elseif cmd == 6 then -- PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION=6
             if message["gid"] ~= clientGID then
                 Log:Error('PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION message["gid"]%d ~= clientGID[%d]',

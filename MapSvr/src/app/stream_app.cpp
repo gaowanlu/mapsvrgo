@@ -193,7 +193,25 @@ void stream_app::on_worker_tunnel(avant::workers::worker &worker_obj, const Prot
         uint64_t gid = tunnelOtherLuaVM2WorkerConn.gid();
         int worker_idx = tunnelOtherLuaVM2WorkerConn.workeridx();
         int cmd = tunnelOtherLuaVM2WorkerConn.innerprotopackage().cmd();
-        worker_obj.send_client_forward_message(gid, {gid}, *tunnelOtherLuaVM2WorkerConn.mutable_innerprotopackage());
+
+        if (cmd == ProtoCmd::PROTO_CMD_TUNNEL_OTHERLUAVM2WORKER_CLOSE_CLIENT_CONNECTION)
+        {
+            avant::connection::connection *close_conn = worker_obj.worker_connection_mgr->get_conn_by_gid(gid);
+            if (close_conn)
+            {
+                auto close_stream_ctx = dynamic_cast<avant::connection::stream_ctx *>(close_conn->ctx_ptr.get());
+                if (close_stream_ctx)
+                {
+                    close_stream_ctx->set_conn_is_close(true);
+                    close_stream_ctx->event_mod(nullptr, event::event_poller::RWE, false);
+                }
+            }
+            return;
+        }
+        else
+        {
+            worker_obj.send_client_forward_message(gid, {gid}, *tunnelOtherLuaVM2WorkerConn.mutable_innerprotopackage());
+        }
 
         // LOG_ERROR("stream_app::on_worker_tunnel gid %llu worker_idx %d real_worker_idx %d cmd %d", gid, worker_idx, worker_obj.get_worker_id(), cmd);
     }

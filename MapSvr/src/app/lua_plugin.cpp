@@ -1428,4 +1428,8 @@ void lua_plugin::init_message_factory()
     {
         return std::make_shared<ProtoTunnelWorker2OtherEventCloseClientConnection>();
     };
+    this->message_factory[ProtoCmd::PROTO_CMD_TUNNEL_OTHERLUAVM2WORKER_CLOSE_CLIENT_CONNECTION] = []()
+    {
+        return std::make_shared<ProtoTunnelOtherLuaVM2WorkerCloseClientConnection>();
+    };
 }
