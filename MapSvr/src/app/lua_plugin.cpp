@@ -8,6 +8,7 @@
 #include "proto_res/proto_example.pb.h"
 #include "utility/singleton.h"
 #include "global/tunnel_id.h"
+#include "app/other_app.h"
 #include <stack>
 #include <chrono>
 
@@ -546,9 +547,11 @@ int lua_plugin::Logger(lua_State *lua_state)
 int lua_plugin::Lua2Protobuf(lua_State *lua_state)
 {
     int num = lua_gettop(lua_state);
-    ASSERT_LOG_EXIT(num == 4);
+    ASSERT_LOG_EXIT(num == 5);
 
-    int isok = lua_isinteger(lua_state, 4);
+    int isok = lua_isstring(lua_state, 5);
+    ASSERT_LOG_EXIT(isok);
+    isok = lua_isinteger(lua_state, 4);
     ASSERT_LOG_EXIT(isok);
     isok = lua_isinteger(lua_state, 3);
     ASSERT_LOG_EXIT(isok);
@@ -557,12 +560,14 @@ int lua_plugin::Lua2Protobuf(lua_State *lua_state)
     isok = lua_istable(lua_state, 1);
     ASSERT_LOG_EXIT(isok);
 
+    const std::string str_param3(lua_tostring(lua_state, 5));
+    lua_pop(lua_state, 1); // 弹出 str_param3
     int64_t int64_param2 = lua_tointeger(lua_state, 4);
-    lua_pop(lua_state, 1); // 弹出param2
+    lua_pop(lua_state, 1); // 弹出 int64_param2
     uint64_t uint64_param1 = lua_tointeger(lua_state, 3);
-    lua_pop(lua_state, 1); // 弹出param1
+    lua_pop(lua_state, 1); // 弹出 uint64_param1
     int cmd = lua_tointeger(lua_state, 2);
-    lua_pop(lua_state, 1); // 弹出cmd
+    lua_pop(lua_state, 1); // 弹出 cmd
 
     int old_lua_stack_size = lua_gettop(lua_state);
 
@@ -594,6 +599,7 @@ int lua_plugin::Lua2Protobuf(lua_State *lua_state)
         }
         else // 发给其他进程的
         {
+            avant::app::other_app::other_lua_send_ipc_package(str_param3, cmd, *msg_ptr);
         }
 
         new_lua_stack_size = lua_gettop(lua_state);

@@ -302,3 +302,36 @@ void other_app::on_recv_package(avant::connection::ipc_stream_ctx &ctx, const Pr
                                                                                         from_app_id_string);
     }
 }
+
+void other_app::other_lua_send_ipc_package(const std::string &app_id, int cmd, google::protobuf::Message &message)
+{
+    if (authenticated_ipc_pair.appid2gid.find(app_id) == authenticated_ipc_pair.appid2gid.end())
+    {
+        LOG_ERROR("other_app::other_lua_send_ipc_package appid2gid not found app_id[%s] cmd[%d]", app_id.c_str(), cmd);
+        return;
+    }
+    uint64_t ipc_ctx_gid = authenticated_ipc_pair.appid2gid.find(app_id)->second;
+    avant::connection::connection *ipc_conn = authenticated_ipc_pair.other_obj->ipc_connection_mgr->get_conn_by_gid(ipc_ctx_gid);
+    if (!ipc_conn)
+    {
+        LOG_ERROR("other_app::other_lua_send_ipc_package !ipc_conn app_id[%s] cmd[%d]", app_id.c_str(), cmd);
+        return;
+    }
+
+    avant::connection::ipc_stream_ctx *ipc_stream_ctx = dynamic_cast<avant::connection::ipc_stream_ctx *>(ipc_conn->ctx_ptr.get());
+    if (!ipc_stream_ctx)
+    {
+        LOG_ERROR("other_app::other_lua_send_ipc_package !ipc_stream_ctx app_id[%s] cmd[%d]", app_id.c_str(), cmd);
+        return;
+    }
+
+    ProtoPackage resPackage;
+    resPackage.set_cmd((avant::ProtoCmd)cmd);
+    std::string data;
+    int ret = ipc_stream_ctx->send_data(avant::proto::pack_package(data, avant::proto::pack_package(resPackage, message, (avant::ProtoCmd)cmd)));
+    if (ret != 0)
+    {
+        LOG_ERROR("other_app::other_lua_send_ipc_package ret[%d]!= 0 app_id[%s] cmd[%d]", ret, app_id.c_str(), cmd);
+        return;
+    }
+}

@@ -97,11 +97,15 @@ function MapSvr.OnLuaVMRecvMessage(cmd, message, uint64_param1, int64_param2, st
                 ["testContext"] = message["testContext"]
             };
             -- message cmd uint64_param1 int64_param2
-            avant.Lua2Protobuf(t, 1, clientGID, workerIdx);
+            avant.Lua2Protobuf(t, 1, clientGID, workerIdx, "");
         end
     elseif int64_param2 == -1 then -- 进程间通过other通信
-        Log:Error("OnLuaVMRecvMessage cmd[%d] uint64_param1[%d] workerIdx[%d] app_id[%s] %s", cmd, uint64_param1,
-            int64_param2, str_param3, DebugTableToString(message))
+        -- Log:Error("OnLuaVMRecvMessage cmd[%d] uint64_param1[%d] workerIdx[%d] app_id[%s] %s", cmd, uint64_param1,
+        --     int64_param2, str_param3, DebugTableToString(message))
+        local t = {
+            ["testContext"] = message["testContext"]
+        };
+        avant.Lua2Protobuf(t, 1, 0, -1, str_param3);
     end
 end
 

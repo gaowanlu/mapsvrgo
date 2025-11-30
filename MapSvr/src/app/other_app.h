@@ -23,6 +23,8 @@ namespace avant
             static void on_close_connection(avant::connection::ipc_stream_ctx &ctx);
             static void on_process_connection(avant::connection::ipc_stream_ctx &ctx);
             static void on_recv_package(avant::connection::ipc_stream_ctx &ctx, const ProtoPackage &package);
+
+            static void other_lua_send_ipc_package(const std::string &app_id, int cmd, google::protobuf::Message &message);
         };
     }
 }
