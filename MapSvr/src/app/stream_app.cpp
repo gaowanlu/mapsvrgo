@@ -107,6 +107,8 @@ void stream_app::on_process_connection(avant::connection::stream_ctx &ctx)
     }
 
     // parse protocol
+    constexpr int max_package_num_per_loop = 100;
+    int package_num_per_loop = 0;
     while (ctx.get_recv_buffer_size() > 0)
     {
         uint64_t data_size = 0;
@@ -149,6 +151,11 @@ void stream_app::on_process_connection(avant::connection::stream_ctx &ctx)
         ctx.recv_buffer_move_read_ptr_n(sizeof(data_size) + data_size);
 
         on_recv_package(ctx, protoPackage);
+        package_num_per_loop++;
+        if (package_num_per_loop >= max_package_num_per_loop)
+        {
+            break;
+        }
     }
 }
 
