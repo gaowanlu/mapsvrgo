@@ -1,9 +1,9 @@
 MapSvr = MapSvr or {}
 local Log = require("Log");
 local Debug = require("DebugLogic")
+local MsgHandler = require("MsgHandlerLogic")
 
 function MapSvr.OnInit()
-
 end
 
 function MapSvr.OnStop()
@@ -31,6 +31,7 @@ function MapSvr.OnReload()
     table.insert(reloadList, "MapMgrLogic")
     table.insert(reloadList, "FrameSyncRoomLogic")
     table.insert(reloadList, "FrameSyncRoomMgrLogic")
+    table.insert(reloadList, "MsgHandlerLogic")
 
     for i, name in ipairs(reloadList) do
         package.loaded[name] = nil;
@@ -55,78 +56,16 @@ function MapSvr.OnReload()
 end
 
 function MapSvr.OnLuaVMRecvMessage(cmd, message, uint64_param1, int64_param2, str_param3)
-
-    function DebugTableToString(t, indent)
-        if type(t) == "string" then
-            return "\"" .. tostring(t) .. "\""
-        end
-
-        if type(t) ~= "table" then
-            return tostring(t)
-        end
-
-        indent = indent or 0
-        local prefix = string.rep("  ", indent)
-        local str = "{\n"
-        for k, v in pairs(t) do
-            local key = tostring(k)
-            local valueStr
-            if type(v) == "table" then
-                valueStr = DebugTableToString(v, indent + 1)
-            else
-                valueStr = DebugTableToString(v)
-            end
-            str = str .. prefix .. "  [\"" .. key .. "\"] = " .. valueStr .. ",\n"
-        end
-        str = str .. prefix .. "}"
-        return str
-    end
-
     -- Log:Error("OnLuaVMRecvMessage cmd[%d] uint64_param1[%d] int64_param2[%d] str_param3[%s]", cmd, uint64_param1, int64_param2, str_param3)
-
     -- 客户端发来得消息
     if int64_param2 >= 0 then
         local clientGID = uint64_param1
         local workerIdx = int64_param2
-        -- ProtoCmd::PROTO_CMD_CS_REQ_EXAMPLE = 0;
-        if cmd == 0 then
-            -- Log:Error("OnLuaVMRecvMessage cmd[%d] clientGID[%d] workerIdx[%d] %s", cmd, clientGID, workerIdx,
-            --     DebugTableToString(message));
-            -- 向客户端发送消息 ProtoCmd::PROTO_CMD_CS_RES_EXAMPLE = 1;
-            local t = {
-                ["testContext"] = message["testContext"]
-            };
-            -- message cmd uint64_param1 int64_param2
-            avant.Lua2Protobuf(t, 1, clientGID, workerIdx, "");
-            -- local closeConn = {
-            --     ["gid"] = clientGID,
-            --     ["workerIdx"] = workerIdx
-            -- };
-            -- -- PROTO_CMD_TUNNEL_OTHERLUAVM2WORKER_CLOSE_CLIENT_CONNECTION=13
-            -- avant.Lua2Protobuf(closeConn, 13, clientGID, workerIdx, "");
-        elseif cmd == 6 then -- PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION=6
-            if message["gid"] ~= clientGID then
-                Log:Error('PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION message["gid"]%d ~= clientGID[%d]',
-                    message["gid"], clientGID);
-                return
-            end
-            Log:Error("New Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx);
-        elseif cmd == 12 then -- PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION=12
-            if message["gid"] ~= clientGID then
-                Log:Error(
-                    'PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION message["gid"]%d ~= clientGID[%d]',
-                    message["gid"], clientGID);
-                return
-            end
-            Log:Error("Close Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx);
-        end
+        MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message);
     elseif int64_param2 == -1 then -- 进程间通过other通信
-        -- Log:Error("OnLuaVMRecvMessage cmd[%d] uint64_param1[%d] workerIdx[%d] app_id[%s] %s", cmd, uint64_param1,
-        --     int64_param2, str_param3, DebugTableToString(message))
-        local t = {
-            ["testContext"] = message["testContext"]
-        };
-        avant.Lua2Protobuf(t, 1, 0, -1, str_param3);
+        MsgHandler:HandlerMsgFromOther(cmd, message, str_param3);
+    else
+        Log:Error("OnLuaVMRecvMessage Unknown int64_param2[%d]", int64_param2)
     end
 end
 

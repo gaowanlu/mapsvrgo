@@ -19,6 +19,23 @@ using namespace avant::utility;
 #define LOG_LUA_PLUGIN_RUNTIME(...) ((void)0)
 // #define LOG_LUA_PLUGIN_RUNTIME(...) LOG_DEBUG(__VA_ARGS__)
 
+void lua_plugin::lua_return_not_is_ok_print_error(int isok, lua_State *lua_state)
+{
+    if (isok != LUA_OK)
+    {
+        const char *err = lua_tostring(lua_state, -1);
+        if (err)
+        {
+            LOG_ERROR("Lua Error: %s", err);
+        }
+        else
+        {
+            LOG_ERROR("Lua Error: (unknown error)");
+        }
+        lua_pop(lua_state, 1); // 弹出错误信息(非常重要)
+    }
+}
+
 lua_plugin::lua_plugin()
 {
     init_message_factory();
@@ -115,7 +132,7 @@ void lua_plugin::real_on_main_init()
         main_mount();
         std::string filename = this->lua_dir + "/Init.lua";
         int isok = luaL_dofile(this->lua_state, filename.data());
-
+        lua_plugin::lua_return_not_is_ok_print_error(isok, this->lua_state);
         ASSERT_LOG_EXIT(isok == LUA_OK);
     }
 
@@ -164,7 +181,7 @@ void lua_plugin::on_worker_init(int worker_idx)
         worker_mount(worker_idx);
         std::string filename = this->lua_dir + "/Init.lua";
         int isok = luaL_dofile(this->worker_lua_state[worker_idx], filename.data());
-
+        lua_plugin::lua_return_not_is_ok_print_error(isok, this->worker_lua_state[worker_idx]);
         ASSERT_LOG_EXIT(isok == LUA_OK);
     }
 
@@ -210,6 +227,7 @@ void lua_plugin::exe_OnMainInit()
 
     int old_lua_stack_size = lua_gettop(this->lua_state);
     isok = lua_pcall(this->lua_state, 0, 0, 0);
+    lua_plugin::lua_return_not_is_ok_print_error(isok, this->lua_state);
     ASSERT_LOG_EXIT(isok == LUA_OK);
 }
 
@@ -346,6 +364,7 @@ void lua_plugin::exe_OnLuaVMRecvMessage(lua_State *lua_state,
     lua_pushstring(lua_state, str_param3.c_str());
 
     isok = lua_pcall(lua_state, 9, 0, 0);
+    lua_plugin::lua_return_not_is_ok_print_error(isok, lua_state);
     ASSERT_LOG_EXIT(isok == LUA_OK);
 }
 
@@ -372,7 +391,7 @@ void lua_plugin::on_other_init(avant::workers::other *ptr_other_obj)
         other_mount();
         std::string filename = this->lua_dir + "/Init.lua";
         int isok = luaL_dofile(this->other_lua_state, filename.data());
-
+        lua_plugin::lua_return_not_is_ok_print_error(isok, this->other_lua_state);
         ASSERT_LOG_EXIT(isok == LUA_OK);
     }
 
@@ -419,6 +438,7 @@ void lua_plugin::exe_OnOtherInit()
     lua_getglobal(this->other_lua_state, "OnOtherInit");
 
     isok = lua_pcall(this->other_lua_state, 0, 0, 0);
+    lua_plugin::lua_return_not_is_ok_print_error(isok, this->other_lua_state);
     ASSERT_LOG_EXIT(isok == LUA_OK);
 }
 
@@ -428,6 +448,7 @@ void lua_plugin::exe_OnOtherStop()
     lua_getglobal(this->other_lua_state, "OnOtherStop");
 
     isok = lua_pcall(this->other_lua_state, 0, 0, 0);
+    lua_plugin::lua_return_not_is_ok_print_error(isok, this->other_lua_state);
     ASSERT_LOG_EXIT(isok == LUA_OK);
 }
 
@@ -437,6 +458,7 @@ void lua_plugin::exe_OnOtherTick()
     lua_getglobal(this->other_lua_state, "OnOtherTick");
 
     isok = lua_pcall(this->other_lua_state, 0, 0, 0);
+    lua_plugin::lua_return_not_is_ok_print_error(isok, this->other_lua_state);
     ASSERT_LOG_EXIT(isok == LUA_OK);
 }
 
@@ -446,6 +468,7 @@ void lua_plugin::exe_OnOtherReload()
     lua_getglobal(this->other_lua_state, "OnOtherReload");
 
     isok = lua_pcall(this->other_lua_state, 0, 0, 0);
+    lua_plugin::lua_return_not_is_ok_print_error(isok, this->other_lua_state);
     ASSERT_LOG_EXIT(isok == LUA_OK);
 }
 

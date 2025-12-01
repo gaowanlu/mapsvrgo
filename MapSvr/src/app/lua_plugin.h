@@ -65,6 +65,9 @@ namespace avant::app
 
         void reload();
 
+    private:
+        static void lua_return_not_is_ok_print_error(int isok, lua_State *lua_state);
+
     public:
         static int Logger(lua_State *lua_state);
         static int Lua2Protobuf(lua_State *lua_state);
