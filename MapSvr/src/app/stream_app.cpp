@@ -107,7 +107,7 @@ void stream_app::on_process_connection(avant::connection::stream_ctx &ctx)
     }
 
     // parse protocol
-    constexpr int max_package_num_per_loop = 100;
+    constexpr int max_package_num_per_loop = INT32_MAX;
     int package_num_per_loop = 0;
     while (ctx.get_recv_buffer_size() > 0)
     {
