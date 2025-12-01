@@ -21,8 +21,8 @@ void stream_app::on_main_init(avant::server::server &server_obj)
 
 void stream_app::on_worker_init(avant::workers::worker &worker_obj)
 {
-    LOG_ERROR("stream_app::on_worker_init %d", worker_obj.worker_id);
-    utility::singleton<lua_plugin>::instance()->on_worker_init(worker_obj.worker_id);
+    LOG_ERROR("stream_app::on_worker_init %d", worker_obj.get_worker_idx());
+    utility::singleton<lua_plugin>::instance()->on_worker_init(worker_obj.get_worker_idx());
 }
 
 void stream_app::on_main_stop(avant::server::server &server_obj)
@@ -33,8 +33,8 @@ void stream_app::on_main_stop(avant::server::server &server_obj)
 
 void stream_app::on_worker_stop(avant::workers::worker &worker_obj)
 {
-    LOG_ERROR("stream_app::on_worker_stop %d", worker_obj.worker_id);
-    utility::singleton<lua_plugin>::instance()->on_worker_stop(worker_obj.worker_id);
+    LOG_ERROR("stream_app::on_worker_stop %d", worker_obj.get_worker_idx());
+    utility::singleton<lua_plugin>::instance()->on_worker_stop(worker_obj.get_worker_idx());
 }
 
 void stream_app::on_main_tick(avant::server::server &server_obj)
@@ -44,7 +44,7 @@ void stream_app::on_main_tick(avant::server::server &server_obj)
 
 void stream_app::on_worker_tick(avant::workers::worker &worker_obj)
 {
-    utility::singleton<lua_plugin>::instance()->on_worker_tick(worker_obj.worker_id);
+    utility::singleton<lua_plugin>::instance()->on_worker_tick(worker_obj.get_worker_idx());
 }
 
 bool stream_app::on_recved_packsize(avant::connection::stream_ctx &ctx, uint64_t size)
@@ -57,7 +57,7 @@ void stream_app::on_new_connection(avant::connection::stream_ctx &ctx)
     // LOG_ERROR("stream_app on_new_connection gid %llu", ctx.get_conn_gid());
     ProtoTunnelWorker2OtherLuaVM worker2OtherLuaVMPkg;
     worker2OtherLuaVMPkg.set_gid(ctx.get_conn_gid());
-    worker2OtherLuaVMPkg.set_workeridx(ctx.get_worker_id());
+    worker2OtherLuaVMPkg.set_workeridx(ctx.get_worker_idx());
 
     {
         ProtoPackage package;
@@ -78,7 +78,7 @@ void stream_app::on_close_connection(avant::connection::stream_ctx &ctx)
     // LOG_ERROR("stream_app on_close_connection gid %llu", ctx.get_conn_gid());
     ProtoTunnelWorker2OtherLuaVM worker2OtherLuaVMPkg;
     worker2OtherLuaVMPkg.set_gid(ctx.get_conn_gid());
-    worker2OtherLuaVMPkg.set_workeridx(ctx.get_worker_id());
+    worker2OtherLuaVMPkg.set_workeridx(ctx.get_worker_idx());
 
     {
         ProtoPackage package;
@@ -163,7 +163,7 @@ void stream_app::on_recv_package(avant::connection::stream_ctx &ctx, const Proto
 {
     ProtoTunnelWorker2OtherLuaVM worker2OtherLuaVMPkg;
     worker2OtherLuaVMPkg.set_gid(ctx.get_conn_gid());
-    worker2OtherLuaVMPkg.set_workeridx(ctx.get_worker_id());
+    worker2OtherLuaVMPkg.set_workeridx(ctx.get_worker_idx());
 
     *worker2OtherLuaVMPkg.mutable_innerprotopackage() = package;
     ProtoPackage resPackage;
