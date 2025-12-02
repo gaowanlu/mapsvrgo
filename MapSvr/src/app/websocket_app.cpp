@@ -327,6 +327,7 @@ void websocket_app::on_process_frame(avant::connection::websocket_ctx &ctx, cons
         ctx.event_mod(nullptr, event::event_poller::RWE, false);
         return;
     }
+    ctx.frame_payload_data.clear();
 
     ProtoTunnelWorker2OtherLuaVM worker2OtherLuaVMPkg;
     worker2OtherLuaVMPkg.set_gid(ctx.get_conn_gid());
