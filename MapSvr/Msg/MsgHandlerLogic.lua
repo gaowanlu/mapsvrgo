@@ -1,5 +1,6 @@
 local MsgHandler = require("MsgHandlerData");
 local Log = require("Log")
+local PlayerMgr = require("PlayerMgrLogic")
 
 MsgHandler.ProtoCmd = {
     PROTO_CMD_CS_REQ_EXAMPLE = 0,
@@ -53,8 +54,18 @@ function MsgHandler:Send2IPC(appId, cmd, message)
 end
 
 function MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message)
+    local playerId = tostring(clientGID) .. "_" .. tostring(workerIdx);
     local handlers = {
         [MsgHandler.ProtoCmd.PROTO_CMD_CS_REQ_EXAMPLE] = function()
+            local player = PlayerMgr.GetPlayer(playerId)
+            if player == nil then
+                Log:Error("Player does not exist for gid[%d] workerIdx[%d]", clientGID, workerIdx)
+                return
+            end
+
+            -- Log:Error("Recv Player from clientGID[%d] workerIdx[%d] PROTO_CMD_CS_REQ_EXAMPLE message: %s", clientGID,
+            --     workerIdx, self:DebugTableToString(message));
+
             local t = {
                 testContext = message["testContext"]
             }
@@ -68,6 +79,13 @@ function MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message)
                 return
             end
             Log:Error("New Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx)
+
+            local player = PlayerMgr.GetPlayer(playerId)
+            if player == nil then
+                player = PlayerMgr.CreatePlayer(playerId)
+            else
+                Log:Error("Player already exists for gid[%d] workerIdx[%d]", clientGID, workerIdx)
+            end
         end,
 
         [MsgHandler.ProtoCmd.PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION] = function()
@@ -78,6 +96,13 @@ function MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message)
                 return
             end
             Log:Error("Close Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx)
+
+            local player = PlayerMgr.GetPlayer(playerId)
+            if player ~= nil then
+                PlayerMgr.RemovePlayer(playerId)
+            else
+                Log:Error("Player does not exist for gid[%d] workerIdx[%d]", clientGID, workerIdx)
+            end
         end
     }
 

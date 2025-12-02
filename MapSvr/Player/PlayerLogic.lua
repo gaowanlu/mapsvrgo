@@ -50,7 +50,7 @@ function Player:GetPlayerID()
 end
 
 function Player:OnTick()
-    -- Log:Error("PlayerId %d", self:GetRoleDbData().id)
+    -- Log:Error("PlayerId %s", self:GetRoleDbData().id)
     self.RoleDbData.x = self.RoleDbData.x + 1
     self.RoleDbData.y = self.RoleDbData.y + 1
     if self.RoleDbData.x > 1000 then
@@ -60,7 +60,7 @@ function Player:OnTick()
         self.RoleDbData.y = 0
     end
 
-    -- Log:Error("=>PlayerOnTick playerId %d x %d y %d level %d", self.RoleDbData.id, self.RoleDbData.x, self.RoleDbData.y,
+    -- Log:Error("=>PlayerOnTick playerId %s x %d y %d level %d", self.RoleDbData.id, self.RoleDbData.x, self.RoleDbData.y,
     --     self.RoleDbData.Info.level)
 
     for _, comp in pairs(self.components) do

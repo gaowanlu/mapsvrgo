@@ -66,7 +66,9 @@ namespace avant::app
         void reload();
 
     private:
-        static void lua_return_not_is_ok_print_error(int isok, lua_State *lua_state);
+        static void lua_plugin_lua_return_not_is_ok_print_error(int isok, lua_State *lua_state);
+        static int lua_plugin_lua_error_handler(lua_State *L);
+        static int lua_plugin_push_lua_error_handler(lua_State *L);
 
     public:
         static int Logger(lua_State *lua_state);

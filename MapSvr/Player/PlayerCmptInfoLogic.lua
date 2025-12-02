@@ -39,7 +39,7 @@ function PlayerCmptInfo:OnTick()
 
     -- Log:Error("%s", tostring(PlayerCmptInfo))
 
-    -- Log:Error("InfoOnTick playerID %d x %s y %s lv %d owner %s self %s", self:GetPlayer():GetRoleDbData().id,
+    -- Log:Error("InfoOnTick playerID %s x %s y %s lv %d owner %s self %s", self:GetPlayer():GetRoleDbData().id,
     --     self:GetPlayer():GetRoleDbData().x, self:GetPlayer():GetRoleDbData().y, self:GetLevel(),
     --     tostring(self:GetPlayer()), tostring(self))
 

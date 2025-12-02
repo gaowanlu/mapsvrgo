@@ -24,7 +24,7 @@ function PlayerCmptBag:GetItemCount(itemID)
 end
 
 function PlayerCmptBag:OnTick()
-    -- Log:Error("bag OnTick PlayerId %d itemID 1001 Cnt %d", self:GetPlayer():GetPlayerID(), self:GetItemCount(1001))
+    -- Log:Error("bag OnTick PlayerId %s itemID 1001 Cnt %d", self:GetPlayer():GetPlayerID(), self:GetItemCount(1001))
 end
 
 return PlayerCmptBag
