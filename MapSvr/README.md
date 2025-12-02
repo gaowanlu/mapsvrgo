@@ -107,12 +107,12 @@ local Other = {};
 local Log = require("Log");
 local MapSvr = require("MapSvr")
 
-Other.dbg = {}; -- 创建dbg对象
+Other_dbg = {}; -- 创建全局dbg对象
 
 function Other:OnInit()
-    Other.dbg = require("emmy_core")
-    Other.dbg.tcpListen("127.0.0.1", 9966)
-    Other.dbg.waitIDE() -- 阻塞等待IDE连接
+    Other_dbg = require("emmy_core")
+    Other_dbg.tcpListen("127.0.0.1", 9966)
+    Other_dbg.waitIDE() -- 阻塞等待IDE连接
 
     local log = "OnOtherInit";
     Log:Error(log);
@@ -127,7 +127,7 @@ function Other:OnStop()
 end
 
 function Other:OnTick()
-    Other.dbg.breakHere() -- 打断点
+    Other_dbg.breakHere() -- 打断点
     MapSvr.OnTick()
 end
 ```
