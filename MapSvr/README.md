@@ -52,6 +52,8 @@ VSCode + Emmylua（VSCode插件）
 
 ### build emmy_core.so
 
+https://github.com/EmmyLua/EmmyLuaDebugger
+
 ```bash
 mkdir build
 cd build
@@ -159,8 +161,8 @@ MapSvr/.vscode/launch.json
 
 ### 启动 avant
 
-启动avant程序other线程将会阻塞在Other.dbg.waitIDE()
+启动avant程序other线程将会阻塞在Other_dbg.waitIDE()
 
-### VSCode 连接到 Other.dbg
+### VSCode 连接到 Other_dbg
 
-VSCode运行与调试，选择 EmmyLua New Debug，就可以看见 Other.dbg.breakHere() 被触发。
+VSCode运行与调试，选择 EmmyLua New Debug，就可以看见 Other_dbg.breakHere() 被触发。
