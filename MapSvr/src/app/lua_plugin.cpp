@@ -15,9 +15,15 @@
 using namespace avant::app;
 using namespace avant::utility;
 
+#define LUA_PLUGIN_LUAOPEN_EMMY_CORE 0
+
 // 屏蔽所有调试日志
 #define LOG_LUA_PLUGIN_RUNTIME(...) ((void)0)
 // #define LOG_LUA_PLUGIN_RUNTIME(...) LOG_DEBUG(__VA_ARGS__)
+
+#if LUA_PLUGIN_LUAOPEN_EMMY_CORE
+extern "C" int luaopen_emmy_core(lua_State *L);
+#endif
 
 void lua_plugin::lua_plugin_lua_return_not_is_ok_print_error(int isok, lua_State *lua_state)
 {
@@ -465,6 +471,11 @@ void lua_plugin::on_other_init(avant::workers::other *ptr_other_obj)
     {
         this->other_lua_state = luaL_newstate();
         luaL_openlibs(this->other_lua_state);
+#if LUA_PLUGIN_LUAOPEN_EMMY_CORE
+        // 加载 emmy_core 模块
+        luaL_requiref(this->other_lua_state, "emmy_core", luaopen_emmy_core, 1);
+        lua_pop(this->other_lua_state, 1);
+#endif
         other_mount();
         std::string filename = this->lua_dir + "/Init.lua";
         int isok = luaL_dofile(this->other_lua_state, filename.data());

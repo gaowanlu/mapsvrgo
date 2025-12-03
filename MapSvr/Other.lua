@@ -2,7 +2,13 @@ local Other = {};
 local Log = require("Log");
 local MapSvr = require("MapSvr")
 
+-- Other_dbg = {};
+
 function Other:OnInit()
+    -- Other_dbg = require("emmy_core")
+    -- Other_dbg.tcpListen("127.0.0.1", 9966)
+    -- Other_dbg.waitIDE()
+
     local log = "OnOtherInit";
     Log:Error(log);
     MapSvr.OnInit()

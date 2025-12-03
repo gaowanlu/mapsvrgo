@@ -73,6 +73,7 @@ function MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message)
         end,
 
         [MsgHandler.ProtoCmd.PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION] = function()
+            -- Other_dbg.breakHere();
             if message["gid"] ~= clientGID then
                 Log:Error('PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION message["gid"]%d ~= clientGID[%d]',
                     message["gid"], clientGID)
