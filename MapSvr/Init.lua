@@ -58,9 +58,9 @@ function OnOtherReload()
     Other:OnReload();
 end
 
-function OnLuaVMRecvMessage(isMainVM, isOtherVM, isWorkerVM, workerIdx, cmd, message, uint64_param1, int64_param2,
-    str_param3)
+function OnLuaVMRecvMessage(isMainVM, isOtherVM, isWorkerVM, workerIdx, msg_type, cmd, message, uint64_param1,
+                            int64_param2, str_param3)
     if isOtherVM then
-        Other:OnLuaVMRecvMessage(cmd, message, uint64_param1, int64_param2, str_param3);
+        Other:OnLuaVMRecvMessage(msg_type, cmd, message, uint64_param1, int64_param2, str_param3);
     end
 end

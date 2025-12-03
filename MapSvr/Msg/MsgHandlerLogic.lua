@@ -46,11 +46,15 @@ function MsgHandler:DebugTableToString(t, indent)
 end
 
 function MsgHandler:Send2Client(clientGID, workerIdx, cmd, message)
-    avant.Lua2Protobuf(message, cmd, clientGID, workerIdx, "");
+    avant.Lua2Protobuf(message, 1, cmd, clientGID, workerIdx, "");
 end
 
 function MsgHandler:Send2IPC(appId, cmd, message)
-    avant.Lua2Protobuf(message, cmd, 0, -1, appId);
+    avant.Lua2Protobuf(message, 2, cmd, 0, -1, appId);
+end
+
+function MsgHandler:Send2UDP(ip, port, cmd, message)
+    avant.Lua2Protobuf(message, 3, cmd, 0, port, ip);
 end
 
 function MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message)
@@ -122,6 +126,22 @@ function MsgHandler:HandlerMsgFromOther(cmd, message, app_id)
             }
             -- 原逻辑是 Send2IPC 但发送的是 message，而不是 t
             self:Send2IPC(app_id, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, message)
+        end
+    }
+
+    local fn = handlers[cmd]
+    if fn then
+        return fn()
+    end
+end
+
+function MsgHandler:HandlerMsgFromUDP(cmd, message, ip, port)
+    local handlers = {
+        [MsgHandler.ProtoCmd.PROTO_CMD_CS_REQ_EXAMPLE] = function()
+            local t = {
+                testContext = message["testContext"]
+            }
+            self:Send2UDP(ip, port, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, t);
         end
     }
 

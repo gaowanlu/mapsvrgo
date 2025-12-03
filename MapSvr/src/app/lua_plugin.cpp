@@ -390,6 +390,7 @@ void lua_plugin::exe_OnWorkerReload(int worker_idx)
 }
 
 void lua_plugin::exe_OnLuaVMRecvMessage(lua_State *lua_state,
+                                        int msg_type,
                                         int cmd,
                                         const google::protobuf::Message &package,
                                         uint64_t uint64_param1,
@@ -434,6 +435,7 @@ void lua_plugin::exe_OnLuaVMRecvMessage(lua_State *lua_state,
     lua_pushboolean(lua_state, is_otherVM);
     lua_pushboolean(lua_state, is_workerVM);
     lua_pushinteger(lua_state, worker_idx);
+    lua_pushinteger(lua_state, msg_type);
     lua_pushinteger(lua_state, cmd);
 
     int old_lua_stack_size = lua_gettop(lua_state);
@@ -445,7 +447,7 @@ void lua_plugin::exe_OnLuaVMRecvMessage(lua_State *lua_state,
     lua_pushinteger(lua_state, int64_param2);
     lua_pushstring(lua_state, str_param3.c_str());
 
-    isok = lua_pcall(lua_state, 9, 0, err_msgh);
+    isok = lua_pcall(lua_state, 10, 0, err_msgh);
     // 移除错误处理函数
     lua_remove(lua_state, err_msgh);
     ASSERT_LOG_EXIT(isok == LUA_OK);
@@ -454,15 +456,42 @@ void lua_plugin::exe_OnLuaVMRecvMessage(lua_State *lua_state,
 void lua_plugin::on_other_lua_vm_recv_client_message(int cmd,
                                                      const google::protobuf::Message &package,
                                                      uint64_t gid,
-                                                     int worker_idx,
-                                                     const std::string &app_id)
+                                                     int worker_idx)
 {
-    exe_OnLuaVMRecvMessage(other_lua_state,
+    exe_OnLuaVMRecvMessage(this->other_lua_state,
+                           1,
                            cmd,
                            package,
                            gid,
                            worker_idx,
+                           "");
+}
+
+void lua_plugin::on_other_lua_vm_recv_ipc_message(int cmd,
+                                                  const google::protobuf::Message &package,
+                                                  const std::string &app_id)
+{
+    exe_OnLuaVMRecvMessage(this->other_lua_state,
+                           2,
+                           cmd,
+                           package,
+                           0,
+                           0,
                            app_id);
+}
+
+void lua_plugin::on_other_lua_vm_recv_udp_message(int cmd,
+                                                  const google::protobuf::Message &package,
+                                                  const std::string &from_ip,
+                                                  int from_port)
+{
+    exe_OnLuaVMRecvMessage(this->other_lua_state,
+                           3,
+                           cmd,
+                           package,
+                           0,
+                           from_port,
+                           from_ip);
 }
 
 void lua_plugin::on_other_init(avant::workers::other *ptr_other_obj)
@@ -669,27 +698,31 @@ int lua_plugin::Logger(lua_State *lua_state)
 int lua_plugin::Lua2Protobuf(lua_State *lua_state)
 {
     int num = lua_gettop(lua_state);
-    ASSERT_LOG_EXIT(num == 5);
+    ASSERT_LOG_EXIT(num == 6);
 
-    int isok = lua_isstring(lua_state, 5);
+    int isok = lua_isstring(lua_state, 6); // str_param3
     ASSERT_LOG_EXIT(isok);
-    isok = lua_isinteger(lua_state, 4);
+    isok = lua_isinteger(lua_state, 5); // int64_param2
     ASSERT_LOG_EXIT(isok);
-    isok = lua_isinteger(lua_state, 3);
+    isok = lua_isinteger(lua_state, 4); // uint64_param1
     ASSERT_LOG_EXIT(isok);
-    isok = lua_isinteger(lua_state, 2);
+    isok = lua_isinteger(lua_state, 3); // cmd
     ASSERT_LOG_EXIT(isok);
-    isok = lua_istable(lua_state, 1);
+    isok = lua_isinteger(lua_state, 2); // msg_tyep
+    ASSERT_LOG_EXIT(isok);
+    isok = lua_istable(lua_state, 1); // message
     ASSERT_LOG_EXIT(isok);
 
-    const std::string str_param3(lua_tostring(lua_state, 5));
+    const std::string str_param3(lua_tostring(lua_state, 6));
     lua_pop(lua_state, 1); // 弹出 str_param3
-    int64_t int64_param2 = lua_tointeger(lua_state, 4);
+    int64_t int64_param2 = lua_tointeger(lua_state, 5);
     lua_pop(lua_state, 1); // 弹出 int64_param2
-    uint64_t uint64_param1 = lua_tointeger(lua_state, 3);
+    uint64_t uint64_param1 = lua_tointeger(lua_state, 4);
     lua_pop(lua_state, 1); // 弹出 uint64_param1
-    int cmd = lua_tointeger(lua_state, 2);
+    int cmd = lua_tointeger(lua_state, 3);
     lua_pop(lua_state, 1); // 弹出 cmd
+    int msg_type = lua_tointeger(lua_state, 2);
+    lua_pop(lua_state, 1); // 弹出 msg_type
 
     int old_lua_stack_size = lua_gettop(lua_state);
 
@@ -708,7 +741,7 @@ int lua_plugin::Lua2Protobuf(lua_State *lua_state)
                                msg_ptr->DebugString().c_str());
 
         // 在这里处理lua发来的包
-        if (uint64_param1 > 0) // 发给客户端连接的包
+        if (msg_type == 1) // 发给客户端连接的包
         {
             ProtoTunnelOtherLuaVM2WorkerConn tunnelOtherVM2WorkerConn;
             tunnelOtherVM2WorkerConn.set_gid(uint64_param1);
@@ -719,9 +752,29 @@ int lua_plugin::Lua2Protobuf(lua_State *lua_state)
                 std::vector{avant::global::tunnel_id::get().get_worker_tunnel_id(int64_param2)},
                 avant::proto::pack_package(resPackage, tunnelOtherVM2WorkerConn, ProtoCmd::PROTO_CMD_TUNNEL_OTHERLUAVM2WORKERCONN));
         }
-        else // 发给其他进程的
+        else if (msg_type == 2) // ipc
         {
             avant::app::other_app::other_lua_send_ipc_package(str_param3, cmd, *msg_ptr);
+        }
+        else if (msg_type == 3)
+        {
+            // udp
+            // LOG_ERROR("Lua2Protobuf UDP send cmd %d to %s:%lld", cmd, str_param3.c_str(), int64_param2);
+            avant::workers::other &other_obj = *singleton<lua_plugin>::instance()->ptr_other_obj;
+            ProtoPackage package;
+            package.set_cmd((avant::ProtoCmd)cmd);
+            std::string data;
+            avant::proto::pack_package(package, *msg_ptr, (avant::ProtoCmd)cmd);
+            avant::proto::pack_package(data, package);
+            int int_ret = other_obj.udp_svr_component->udp_component_client(str_param3, int64_param2, data.c_str(), data.size(), nullptr, 0);
+            if (int_ret != 0)
+            {
+                LOG_ERROR("udp_component_client failed cmd %d to %s:%d", cmd, str_param3.c_str(), int64_param2);
+            }
+        }
+        else
+        {
+            LOG_ERROR("Lua2Protobuf unknow msg_type %d", msg_type);
         }
 
         new_lua_stack_size = lua_gettop(lua_state);

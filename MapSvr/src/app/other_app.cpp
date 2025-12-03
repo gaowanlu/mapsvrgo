@@ -135,8 +135,7 @@ void other_app::on_other_tunnel(avant::workers::other &other_obj, const ProtoPac
         utility::singleton<lua_plugin>::instance()->on_other_lua_vm_recv_client_message(cmd,
                                                                                         *ptrMessage,
                                                                                         fromGid,
-                                                                                        worker_idx,
-                                                                                        "");
+                                                                                        worker_idx);
     }
     else
     {
@@ -295,11 +294,9 @@ void other_app::on_recv_package(avant::connection::ipc_stream_ctx &ctx, const Pr
             return;
         }
 
-        utility::singleton<lua_plugin>::instance()->on_other_lua_vm_recv_client_message(package.cmd(),
-                                                                                        *ptrMessage,
-                                                                                        0,
-                                                                                        worker_idx,
-                                                                                        from_app_id_string);
+        utility::singleton<lua_plugin>::instance()->on_other_lua_vm_recv_ipc_message(package.cmd(),
+                                                                                     *ptrMessage,
+                                                                                     from_app_id_string);
     }
 }
 
@@ -353,24 +350,24 @@ void other_app::on_udp_server_recvfrom(avant::workers::other &other_obj, const c
         return;
     }
 
-    if (package.cmd() != ProtoCmd::PROTO_CMD_CS_REQ_EXAMPLE)
+    int cmd = package.cmd();
+
+    std::shared_ptr<google::protobuf::Message> ptrMessage = utility::singleton<lua_plugin>::instance()->protobuf_cmd2message(cmd);
+    if (!ptrMessage)
     {
-        LOG_ERROR("other udp_svr_component message_callback recv unknown cmd %d len %zd", package.cmd(), len);
+        LOG_ERROR("other_app::on_other_tunnel unknow cmd %d", cmd);
         return;
     }
 
-    ProtoCSReqExample req;
-    if (avant::proto::parse(req, package))
+    bool bool_ret = avant::proto::parse(*ptrMessage, package);
+    if (!bool_ret)
     {
-        ProtoPackage resPackage;
-        ProtoCSResExample res;
-        res.set_testcontext(req.testcontext());
-        std::string data;
-        avant::proto::pack_package(data, avant::proto::pack_package(resPackage, res, ProtoCmd::PROTO_CMD_CS_RES_EXAMPLE));
-        int int_ret = other_obj.udp_svr_component.get()->udp_component_client("", 0, data.data(), data.size(), (struct sockaddr *)&addr, addr_len);
-        if (int_ret != 0)
-        {
-            LOG_ERROR("other udp_svr_component message_callback recv len %zd udp_component_client %d", len, int_ret);
-        }
+        LOG_ERROR("other_app::on_other_tunnel unknow cmd %d", cmd);
+        return;
     }
+
+    std::string from_ip = other_obj.udp_svr_component->udp_component_get_ip(addr);
+    int from_port = other_obj.udp_svr_component->udp_component_get_port(addr);
+
+    utility::singleton<lua_plugin>::instance()->on_other_lua_vm_recv_udp_message(cmd, *ptrMessage, from_ip, from_port);
 }
