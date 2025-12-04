@@ -764,9 +764,9 @@ int lua_plugin::Lua2Protobuf(lua_State *lua_state)
             avant::workers::other &other_obj = *singleton<lua_plugin>::instance()->ptr_other_obj;
             ProtoPackage package;
             package.set_cmd((avant::ProtoCmd)cmd);
-            std::string data;
             avant::proto::pack_package(package, *msg_ptr, (avant::ProtoCmd)cmd);
-            avant::proto::pack_package(data, package);
+            std::string data;
+            package.SerializeToString(&data);
             int int_ret = other_obj.udp_svr_component->udp_component_client(str_param3, int64_param2, data.c_str(), data.size(), nullptr, 0);
             if (int_ret != 0)
             {
