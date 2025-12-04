@@ -746,7 +746,8 @@ int lua_plugin::Lua2Protobuf(lua_State *lua_state)
             ProtoTunnelOtherLuaVM2WorkerConn tunnelOtherVM2WorkerConn;
             tunnelOtherVM2WorkerConn.set_gid(uint64_param1);
             tunnelOtherVM2WorkerConn.set_workeridx(int64_param2);
-            tunnelOtherVM2WorkerConn.mutable_innerprotopackage()->set_cmd((avant::ProtoCmd)cmd);
+            avant::proto::pack_package(*tunnelOtherVM2WorkerConn.mutable_innerprotopackage(), *msg_ptr, (avant::ProtoCmd)cmd);
+
             ProtoPackage resPackage;
             singleton<lua_plugin>::instance()->ptr_other_obj->tunnel_forward(
                 std::vector{avant::global::tunnel_id::get().get_worker_tunnel_id(int64_param2)},

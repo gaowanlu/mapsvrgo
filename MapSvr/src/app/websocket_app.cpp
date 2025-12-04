@@ -346,8 +346,8 @@ void websocket_app::on_client_forward_message(avant::connection::websocket_ctx &
                                               const ProtoTunnelPackage &tunnel_package)
 {
     int cmd = message.innerprotopackage().cmd();
-    uint8_t first_byte = 0x80 | websocket_frame_type_2_n(websocket_frame_type::TEXT_FRAME);
-    std::string data = message.innerprotopackage().SerializePartialAsString();
+    uint8_t first_byte = 0x80 | websocket_frame_type_2_n(websocket_frame_type::BINARY_FRAME);
+    std::string data = message.innerprotopackage().SerializeAsString();
     send_sync_package(ctx, first_byte, data.c_str(), data.size());
 }
 
