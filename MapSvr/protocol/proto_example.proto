@@ -15,3 +15,17 @@ message ProtoCSResExample
 {
     bytes testContext = 1;
 }
+
+// PROTO_CMD_CS_REQ_LOGIN 登录
+message ProtoCSReqLogin
+{
+    string userId=1;
+    string password=2;
+}
+
+// PROTO_CMD_CS_RES_LOGIN 登录返回
+message ProtoCSResLogin
+{
+    int32 ret=1;
+    string sessionId=2;
+}

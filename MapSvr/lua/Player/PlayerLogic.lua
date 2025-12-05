@@ -3,6 +3,7 @@ local Player = require("PlayerData");
 local Log = require("Log");
 local PlayerCmptInfo = require("PlayerCmptInfoLogic")
 local PlayerCmptBag = require("PlayerCmptBagLogic")
+local ConfigTableMgr = require("ConfigTableMgrLogic")
 
 -- Player类的方法
 function Player.new(playerId)
@@ -12,6 +13,9 @@ function Player.new(playerId)
     -- 模拟玩家的DB字段
     self.RoleDbData = {}
     self.RoleDbData.id = playerId
+    self.RoleDbData.clientGID = 0
+    self.RoleDbData.workerIdx = -1
+    self.RoleDbData.userId = ""
     self.RoleDbData.name = "Player_" .. tostring(playerId)
     self.RoleDbData.x = 0
     self.RoleDbData.y = 0
@@ -49,7 +53,36 @@ function Player:GetPlayerID()
     return self:GetRoleDbData().id
 end
 
+function Player:GetClientGID()
+    return self:GetRoleDbData().clientGID
+end
+
+function Player:GetWorkerIdx()
+    return self:GetRoleDbData().workerIdx
+end
+
+function Player:GetUserId()
+    return self:GetRoleDbData().userId
+end
+
+function Player:SetClientGID(clientGID)
+    self:GetRoleDbData().clientGID = clientGID
+end
+
+function Player:SetWorkerIdx(workerIdx)
+    self:GetRoleDbData().workerIdx = workerIdx
+end
+
+function Player:SetUserId(userId)
+    self:GetRoleDbData().userId = userId
+end
+
 function Player:OnTick()
+    local userConfig = ConfigTableMgr.UserConfigs:get(self:GetPlayerID())
+    if userConfig ~= nil then
+        -- Log:Error("PlayerOnTick userConfig %s", userConfig.userName)
+    end
+
     -- Log:Error("PlayerId %s", self:GetRoleDbData().id)
     self.RoleDbData.x = self.RoleDbData.x + 1
     self.RoleDbData.y = self.RoleDbData.y + 1

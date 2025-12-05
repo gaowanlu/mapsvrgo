@@ -18,7 +18,4 @@ function Main:OnReload()
     Log:Error("luavm Main:OnReload");
 end
 
-function Main:OnLuaVMRecvMessage(cmd, message)
-end
-
 return Main;

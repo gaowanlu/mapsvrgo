@@ -4,6 +4,7 @@ package.path = avant.LuaDir .. "/Debug/?.lua;" .. package.path
 package.path = avant.LuaDir .. "/Map/?.lua;" .. package.path
 package.path = avant.LuaDir .. "/FrameSync/?.lua;" .. package.path
 package.path = avant.LuaDir .. "/Msg/?.lua;" .. package.path
+package.path = avant.LuaDir .. "/ConfigTable/?.lua;" .. package.path
 
 local Log = require("Log")
 local Main = require("Main")

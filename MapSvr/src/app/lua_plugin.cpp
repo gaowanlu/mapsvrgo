@@ -1608,4 +1608,12 @@ void lua_plugin::init_message_factory()
     {
         return std::make_shared<ProtoTunnelOtherLuaVM2WorkerCloseClientConnection>();
     };
+    this->message_factory[ProtoCmd::PROTO_CMD_CS_REQ_LOGIN] = []()
+    {
+        return std::make_shared<ProtoCSReqLogin>();
+    };
+    this->message_factory[ProtoCmd::PROTO_CMD_CS_RES_LOGIN] = []()
+    {
+        return std::make_shared<ProtoCSResLogin>();
+    };
 }

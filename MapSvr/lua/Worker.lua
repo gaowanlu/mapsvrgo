@@ -19,7 +19,4 @@ function Worker:OnReload(workerIdx)
     Log:Error("luavm Worker:OnReload workerIdx " .. tostring(workerIdx));
 end
 
-function Worker:OnLuaVMRecvMessage(workerIdx, cmd, message)
-end
-
 return Worker;
