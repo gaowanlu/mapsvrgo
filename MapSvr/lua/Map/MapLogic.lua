@@ -1,6 +1,7 @@
 -- MapLogic.lua logic script, reloadable
 local Map = require("MapData")
 local Log = require("Log")
+local TimeMgr = require("TimeMgrLogic")
 
 -- 构造新的Map对象
 function Map.new(mapId)
@@ -11,6 +12,12 @@ function Map.new(mapId)
     self.MapDbData.id = mapId
     self.MapDbData.name = "Map_" .. tostring(mapId)
 
+    -- 帧率
+    self.MapDbData.TICK_RATE = 20
+    -- 每帧时间间隔
+    self.MapDbData.DT_MS = 1000 // self.MapDbData.TICK_RATE
+    self.MapDbData.lastTickTimeMS = 0
+
     return self
 end
 
@@ -19,7 +26,11 @@ function Map:GetMapDbData()
 end
 
 function Map:OnTick()
-    -- Log:Error("MapId %d", self:GetMapDbData().id)
+    local timeMS = TimeMgr.GetMS()
+    if (timeMS - self.MapDbData.lastTickTimeMS) >= self.MapDbData.DT_MS then
+        self.MapDbData.lastTickTimeMS = timeMS
+        -- Log:Error("MapId %d MS %d", self.MapDbData.id, timeMS)
+    end
 end
 
 return Map;

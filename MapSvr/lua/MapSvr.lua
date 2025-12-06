@@ -33,6 +33,7 @@ function MapSvr.OnReload()
     table.insert(reloadList, "FrameSyncRoomMgrLogic")
     table.insert(reloadList, "MsgHandlerLogic")
     table.insert(reloadList, "ConfigTableMgrLogic")
+    table.insert(reloadList, "TimeMgrLogic")
 
     for i, name in ipairs(reloadList) do
         package.loaded[name] = nil;
