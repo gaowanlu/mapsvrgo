@@ -3,6 +3,7 @@ local Player = require("PlayerData");
 local Log = require("Log");
 local PlayerCmptInfo = require("PlayerCmptInfoLogic")
 local PlayerCmptBag = require("PlayerCmptBagLogic")
+local PlayerCmptMap = require("PlayerCmptMapLogic")
 local ConfigTableMgr = require("ConfigTableMgrLogic")
 
 -- Player类的方法
@@ -42,7 +43,8 @@ end
 
 function Player:InitComponents()
     self.components.info = PlayerCmptInfo.new(self)
-    self.components.bag = PlayerCmptBag.new(self)
+    self.components.bag  = PlayerCmptBag.new(self)
+    self.components.map  = PlayerCmptMap.new(self)
 end
 
 function Player:GetComponent(name)

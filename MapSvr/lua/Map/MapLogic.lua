@@ -74,4 +74,16 @@ function Map:FindSpawnPoint()
     return { x = mapW // 2, y = mapH // 2 }
 end
 
+-- 新玩家加入地图
+function Map:PlayerJoinMap(playerId)
+    Log:Error("NewPlayerJoinMap id %d playerId %s", self.MapDbData.id, playerId)
+    return true
+end
+
+-- 玩家离开地图
+function Map:PlayerExitMap(playerId)
+    Log:Error("PlayerExitMap id %d playerId %s", self.MapDbData.id, playerId)
+    return true
+end
+
 return Map;
