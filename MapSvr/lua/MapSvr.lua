@@ -50,6 +50,7 @@ function MapSvr.OnReload()
 
     -- 初始化一个玩家Player
     PlayerMgr.CreatePlayer("1")
+    PlayerMgr.GetPlayerByPlayerId("1"):SetUserId("test_account")
     -- 初始化一张地图
     MapMgr.CreateMap(2)
     -- 初始化一个帧同步房间

@@ -70,7 +70,7 @@ function MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message)
                     message["gid"], clientGID)
                 return
             end
-            Log:Error("New Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx)
+            -- Log:Error("New Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx)
 
             local player = PlayerMgr.GetPlayerByPlayerId(playerId)
 
@@ -96,10 +96,11 @@ function MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message)
                     message["gid"], clientGID)
                 return
             end
-            Log:Error("Close Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx)
+            -- Log:Error("Close Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx)
 
             local player = PlayerMgr.GetPlayerByPlayerId(playerId)
             if player ~= nil then
+                player:OnLogout()
                 PlayerMgr.RemovePlayerByPlayerId(playerId)
             else
                 -- Log:Error("Player does not exist for gid[%d] workerIdx[%d]", clientGID, workerIdx)
@@ -182,12 +183,12 @@ function MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message)
             player:SetClientGID(clientGID)
             player:SetWorkerIdx(workerIdx)
 
-            local t = {
+            self:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_LOGIN, {
                 ret = 0,
                 sessionId = playerId
-            };
+            });
 
-            self:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_LOGIN, t)
+            player:OnLogin()
         end
     }
 

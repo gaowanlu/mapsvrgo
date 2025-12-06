@@ -21,6 +21,23 @@ function Map.new(mapId)
     -- 帧时常累计时间毫秒
     self.MapDbData.durationAccumulator = 0
 
+    -- 地图相关信息
+    self.tileMap = {
+        tileSize = 50,
+        width = 400,
+        height = 400,
+        data = {} -- 400*400
+    };
+    -- 初始化tileMap.data
+    for i = 0, self.tileMap.width * self.tileMap.height do
+        self.tileMap.data[i] = 0 -- 设为默认值
+    end
+
+    -- 地图内的Player
+    self.Players = {
+        -- ["playerId"] = { ["payload"] = "data" }
+    };
+
     return self
 end
 
@@ -46,7 +63,15 @@ function Map:OnTick()
 end
 
 function Map:FixedUpdate()
-    -- Log:Error("MapId %d FixedUpdate", self.MapDbData.id)
+    -- Log:Error("MapId %d FixedUpdate FinSpawnPoint x %d y %d", self.MapDbData.id, self:FindSpawnPoint().x,
+    --     self:FindSpawnPoint().y)
+end
+
+-- 所有玩家出生点相同（地图中心）
+function Map:FindSpawnPoint()
+    local mapW = self.tileMap.width * self.tileMap.tileSize
+    local mapH = self.tileMap.height * self.tileMap.tileSize
+    return { x = mapW // 2, y = mapH // 2 }
 end
 
 return Map;

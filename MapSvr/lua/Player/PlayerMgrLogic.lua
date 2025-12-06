@@ -12,7 +12,7 @@ function PlayerMgr.CreatePlayer(playerId)
         return PlayerMgr.players[playerId]
     end
 
-    Log:Error("Create new Player playerId[%s]", playerId)
+    -- Log:Error("Create new Player playerId[%s]", playerId)
     local player = Player.new(playerId)
     PlayerMgr.players[playerId] = player
     return player
@@ -30,7 +30,7 @@ function PlayerMgr.RemovePlayerByPlayerId(playerId)
         PlayerMgr.playerIdToUserId[playerId] = nil
     end
 
-    Log:Error("RemovePlayerByPlayerId from PlayerMgr playerId %s userId %s", playerId, userId or "nil");
+    -- Log:Error("RemovePlayerByPlayerId from PlayerMgr playerId %s userId %s", playerId, userId or "nil");
 end
 
 function PlayerMgr.BindUserIdAndPlayerId(userId, playerId)

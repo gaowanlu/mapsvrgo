@@ -103,4 +103,20 @@ function Player:OnTick()
     end
 end
 
+function Player:OnLogin()
+    for _, comp in pairs(self.components) do
+        if comp.OnLogin then
+            comp:OnLogin()
+        end
+    end
+end
+
+function Player:OnLogout()
+    for _, comp in pairs(self.components) do
+        if comp.OnLogin then
+            comp:OnLogout()
+        end
+    end
+end
+
 return Player;

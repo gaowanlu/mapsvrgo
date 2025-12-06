@@ -37,12 +37,15 @@ function PlayerCmptInfo:OnTick()
         self:SetLevel(0)
     end
 
-    -- Log:Error("%s", tostring(PlayerCmptInfo))
+    -- Log:Error("PlayerCmptInfo userId %s Level %d", self:GetPlayer():GetUserId(), self:GetLevel())
+end
 
-    -- Log:Error("InfoOnTick playerID %s x %s y %s lv %d owner %s self %s", self:GetPlayer():GetRoleDbData().id,
-    --     self:GetPlayer():GetRoleDbData().x, self:GetPlayer():GetRoleDbData().y, self:GetLevel(),
-    --     tostring(self:GetPlayer()), tostring(self))
+function PlayerCmptInfo:OnLogin()
+    Log:Error("PlayerCmptInfo:OnLogin userId %s Level %d", self:GetPlayer():GetUserId(), self:GetLevel())
+end
 
+function PlayerCmptInfo:OnLogout()
+    Log:Error("PlayerCmptInfo:OnLogout userId %s Level %d", self:GetPlayer():GetUserId(), self:GetLevel())
 end
 
 return PlayerCmptInfo
