@@ -1,9 +1,12 @@
+---@class MapMgrType
+---@field maps table<integer,Map>
+
+---@class MapMgr:MapMgrType
 local MapMgr = require("MapMgrData");
 local Map = require("MapLogic");
 local Log = require("Log");
 
 -- 热重载lua会被重新执行
----@type table<integer,Map>
 MapMgr.maps = MapMgr.maps or {}
 
 ---@return Map

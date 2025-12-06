@@ -1,8 +1,14 @@
+---@class MsgHandlerType
+---@field ProtoCmd table<string,number> 协议号
+
+---@class MsgHandler:MsgHandlerType
 local MsgHandler = require("MsgHandlerData");
+
 local Log = require("Log")
 local PlayerMgr = require("PlayerMgrLogic")
 local ConfigTableMgr = require("ConfigTableMgrLogic")
 
+-- 协议号
 MsgHandler.ProtoCmd = {
     PROTO_CMD_CS_REQ_EXAMPLE = 0,
     PROTO_CMD_CS_RES_EXAMPLE = 1,
@@ -48,18 +54,37 @@ function MsgHandler:DebugTableToString(t, indent)
     return str
 end
 
+--- 发送协议到客户端
+---@param clientGID number 客户端连接gid
+---@param workerIdx number 客户端连接所在worker下标
+---@param cmd number 协议号
+---@param message table protobufMessage
 function MsgHandler:Send2Client(clientGID, workerIdx, cmd, message)
     avant.Lua2Protobuf(message, 1, cmd, clientGID, workerIdx, "");
 end
 
+--- 发送协议到其他进程
+---@param appId string 远程进程appid
+---@param cmd number 协议号
+---@param message table protobufMessage
 function MsgHandler:Send2IPC(appId, cmd, message)
     avant.Lua2Protobuf(message, 2, cmd, 0, -1, appId);
 end
 
+--- 发送UDP数据
+---@param ip string 目标UDP字符串
+---@param port number 目标UDP端口
+---@param cmd number 协议号
+---@param message table protobufMessage
 function MsgHandler:Send2UDP(ip, port, cmd, message)
     avant.Lua2Protobuf(message, 3, cmd, 0, port, ip);
 end
 
+--- 客户端来新消息了
+---@param clientGID number 客户端连接gid
+---@param workerIdx number 客户端连接所在worker下标
+---@param cmd number 协议号
+---@param message table protobufMessage
 function MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message)
     local playerId = tostring(clientGID) .. "_" .. tostring(workerIdx);
     local handlers = {
@@ -162,15 +187,15 @@ function MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message)
             end
 
             -- 查userId是否已经有了玩家对象 有的话说明重复登录了
-            player = PlayerMgr.GetPlayerByUserId(userConfig.userId)
-            if player ~= nil then
+            local playerByUserId = PlayerMgr.GetPlayerByUserId(userConfig.userId)
+            if playerByUserId ~= nil then
                 Log:Error("UserId[%s] already logged in", userConfig.userId)
                 return
             end
 
             -- 创建玩家对象
-            player = PlayerMgr.CreatePlayer(playerId)
-            if player == nil then
+            local createPlayer = PlayerMgr.CreatePlayer(playerId)
+            if createPlayer == nil then
                 Log:Error("Failed to create player for gid[%d] workerIdx[%d]", clientGID, workerIdx)
                 return
             end
@@ -179,16 +204,16 @@ function MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message)
             -- PlayerMgr 的 userId 与 playerId的双向映射
             PlayerMgr.BindUserIdAndPlayerId(userConfig.userId, playerId);
             -- 设置 Player 的 userId、clientGID、workerIdx
-            player:SetUserId(userConfig.userId)
-            player:SetClientGID(clientGID)
-            player:SetWorkerIdx(workerIdx)
+            createPlayer:SetUserId(userConfig.userId)
+            createPlayer:SetClientGID(clientGID)
+            createPlayer:SetWorkerIdx(workerIdx)
 
             self:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_LOGIN, {
                 ret = 0,
                 sessionId = playerId
             });
 
-            player:OnLogin()
+            createPlayer:OnLogin()
         end
     }
 
@@ -199,6 +224,10 @@ function MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message)
     end
 end
 
+--- 其他进程来新消息了
+---@param cmd number 协议号
+---@param message table 协议
+---@param app_id string 从哪个进程appid来的消息
 function MsgHandler:HandlerMsgFromOther(cmd, message, app_id)
     local handlers = {
         [MsgHandler.ProtoCmd.PROTO_CMD_CS_REQ_EXAMPLE] = function()
@@ -216,6 +245,11 @@ function MsgHandler:HandlerMsgFromOther(cmd, message, app_id)
     end
 end
 
+--- 接收到了新的UDP消息
+---@param cmd number 协议号
+---@param message table 协议
+---@param ip string UDP客户端的IP
+---@param port number UDP客户端的端口
 function MsgHandler:HandlerMsgFromUDP(cmd, message, ip, port)
     local handlers = {
         [MsgHandler.ProtoCmd.PROTO_CMD_CS_REQ_EXAMPLE] = function()

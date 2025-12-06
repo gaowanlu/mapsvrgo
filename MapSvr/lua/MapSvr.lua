@@ -2,6 +2,9 @@ MapSvr = MapSvr or {}
 local Log = require("Log");
 local Debug = require("DebugLogic")
 local MsgHandler = require("MsgHandlerLogic")
+local PlayerMgr = require("PlayerMgrLogic")
+local MapMgr = require("MapMgrLogic")
+local FrameSyncRoomMgr = require("FrameSyncRoomMgrLogic")
 
 function MapSvr.OnInit()
 end

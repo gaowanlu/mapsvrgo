@@ -1,17 +1,25 @@
 local PlayerCmptBase = require("PlayerCmptBaseLogic")
 local Log = require("Log")
+
+---@class PlayerCmptInfoType:PlayerCmptBase
+
+---@class PlayerCmptInfo:PlayerCmptInfoType
 local PlayerCmptInfo = require("PlayerCmptInfoData")
 
+---@param owner Player
+---@return PlayerCmptInfo
 function PlayerCmptInfo.new(owner)
     -- 本质是 setmetatable(PlayerCmptBase.new(owner), {__index=PlayerCmptInfo})
     local self = setmetatable(PlayerCmptBase.new(owner), PlayerCmptInfo)
     return self
 end
 
+---@return RoleDbDataInfoType
 function PlayerCmptInfo:GetInfoData()
     return self:GetPlayer():GetRoleDbData().Info
 end
 
+---@param lv number
 function PlayerCmptInfo:SetLevel(lv)
     local dbData = self:GetInfoData()
     dbData.level = lv
@@ -22,6 +30,7 @@ function PlayerCmptInfo:UpLevel()
     dbData.level = dbData.level + 1
 end
 
+---@return number
 function PlayerCmptInfo:GetLevel()
     local dbData = self:GetInfoData()
     return dbData.level

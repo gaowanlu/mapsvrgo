@@ -1,3 +1,9 @@
+---@class PlayerMgrType
+---@field players table<string,Player>
+---@field userIdToPlayerId table<number,string>
+---@field playerIdToUserId table<string,number>
+
+---@class PlayerMgr:PlayerMgrType
 local PlayerMgr = require("PlayerMgrData");
 local Player = require("PlayerLogic")
 local Log = require("Log")
@@ -6,6 +12,8 @@ PlayerMgr["players"] = PlayerMgr["players"] or {}
 PlayerMgr["userIdToPlayerId"] = PlayerMgr["userIdToPlayerId"] or {}
 PlayerMgr["playerIdToUserId"] = PlayerMgr["playerIdToUserId"] or {}
 
+---@param playerId string
+---@return Player
 function PlayerMgr.CreatePlayer(playerId)
     if PlayerMgr.players[playerId] then
         Log:Error("Already exists Player playerId %s", playerId)
@@ -18,10 +26,13 @@ function PlayerMgr.CreatePlayer(playerId)
     return player
 end
 
+---@param playerId string
+---@return Player
 function PlayerMgr.GetPlayerByPlayerId(playerId)
     return PlayerMgr.players[playerId]
 end
 
+---@param playerId string
 function PlayerMgr.RemovePlayerByPlayerId(playerId)
     PlayerMgr.players[playerId] = nil
     local userId = PlayerMgr.playerIdToUserId[playerId]
@@ -33,6 +44,8 @@ function PlayerMgr.RemovePlayerByPlayerId(playerId)
     -- Log:Error("RemovePlayerByPlayerId from PlayerMgr playerId %s userId %s", playerId, userId or "nil");
 end
 
+---@param userId string
+---@param playerId string
 function PlayerMgr.BindUserIdAndPlayerId(userId, playerId)
     if nil == PlayerMgr.GetPlayerByPlayerId(playerId) then
         Log:Error("BindUserIdAndPlayerId failed, playerId %s not exists", playerId);
@@ -43,6 +56,7 @@ function PlayerMgr.BindUserIdAndPlayerId(userId, playerId)
     PlayerMgr.playerIdToUserId[playerId] = userId
 end
 
+---@param userId string
 function PlayerMgr.GetPlayerByUserId(userId)
     local playerId = PlayerMgr.userIdToPlayerId[userId]
     if playerId == nil then

@@ -1,8 +1,15 @@
+---@class PlayerCmptMapType:PlayerCmptBase
+---@field nowMapId number
+
 local PlayerCmptBase = require("PlayerCmptBaseLogic")
 local Log = require("Log")
+
+---@class PlayerCmptMap:PlayerCmptMapType
 local PlayerCmptMap = require("PlayerCmptMapData")
 local MapMgr = require("MapMgrLogic")
 
+---@param owner Player
+---@return PlayerCmptMap
 function PlayerCmptMap.new(owner)
     -- 本质是 setmetatable(PlayerCmptBase.new(owner), {__index=PlayerCmptMap})
     local self = setmetatable(PlayerCmptBase.new(owner), PlayerCmptMap)
@@ -22,7 +29,7 @@ function PlayerCmptMap:OnLogin()
     if map == nil then
         return
     end
-    if map:PlayerJoinMap(self:GetPlayer():GetPlayerID()) then
+    if map:PlayerJoinMap(self:GetPlayer():GetPlayerID()) == true then
         self.nowMapId = joinMapId
     end
 end
@@ -37,6 +44,8 @@ function PlayerCmptMap:OnLogout()
             self.nowMapId = -1
         end
     end
+
+    self:GetPlayer():GetComponents().bag:ByOtherCmptCallTest("PlayerCmptMap");
 end
 
 return PlayerCmptMap

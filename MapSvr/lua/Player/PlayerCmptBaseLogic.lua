@@ -1,6 +1,12 @@
-local PlayerCmptBase = require("Player.PlayerCmptBaseData")
+---@class PlayerCmptBaseType
+---@field owner Player
+
+---@class PlayerCmptBase:PlayerCmptBaseType
+local PlayerCmptBase = require("PlayerCmptBaseData")
 local Log = require("Log")
 
+---@param owner Player
+---@return PlayerCmptBase
 function PlayerCmptBase.new(owner)
     -- 本质是 setmetatable({}, {__index=PlayerCmptBase})
     local self = setmetatable({}, PlayerCmptBase)
@@ -25,6 +31,7 @@ function PlayerCmptBase:OnSave()
     -- 可选重写
 end
 
+---@return Player
 function PlayerCmptBase:GetPlayer()
     return self.owner
 end

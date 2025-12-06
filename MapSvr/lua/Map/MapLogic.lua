@@ -25,7 +25,7 @@
 ---@field id integer 地图ID
 ---@field TICK_RATE integer 帧率
 ---@field DT_MS integer 每帧时间间隔 毫秒
----@field lastTickTimeMS integer 执行上一次tick的毫秒时间戳
+---@field lastTickTimeMS number 执行上一次tick的毫秒时间戳
 ---@field durationAccumulator number 帧时常累计时间毫秒
 
 ---@class MapType
@@ -110,6 +110,8 @@ function Map:FindSpawnPoint()
 end
 
 -- 新玩家加入地图
+---@param playerId string
+---@return boolean
 function Map:PlayerJoinMap(playerId)
     Log:Error("NewPlayerJoinMap id %d playerId %s", self.MapDbData.id, playerId)
 
@@ -141,6 +143,8 @@ function Map:PlayerJoinMap(playerId)
 end
 
 -- 玩家离开地图
+---@param playerId string
+---@return boolean
 function Map:PlayerExitMap(playerId)
     Log:Error("PlayerExitMap id %d playerId %s", self.MapDbData.id, playerId)
 
