@@ -3,20 +3,25 @@ local Map = require("MapLogic");
 local Log = require("Log");
 
 -- 热重载lua会被重新执行
-MapMgr["maps"] = MapMgr["maps"] or {}
+---@type table<integer,Map>
+MapMgr.maps = MapMgr.maps or {}
 
+---@return Map
 function MapMgr.CreateMap(mapId)
-    if MapMgr.maps[mapId] then
+    if MapMgr.maps[mapId] ~= nil then
         Log:Error("Already exists Map mapId %d", mapId)
         return MapMgr.maps[mapId]
     end
 
     Log:Error("Create new Map mapId[%d]", mapId)
     local newMap = Map.new(mapId)
+
     MapMgr.maps[mapId] = newMap
-    return newMap
+
+    return MapMgr.maps[mapId]
 end
 
+---@return Map
 function MapMgr.GetMap(mapId)
     return MapMgr.maps[mapId]
 end
