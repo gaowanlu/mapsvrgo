@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package avant;
+
+option go_package = "/proto_res";
+
+import "proto_message_head.proto";
+
+enum ProtoTunnelID
+{
+    PROTO_TUNNEL_WORKER_MIN = 0;
+    PROTO_TUNNEL_ID_OTHER = -1;
+    PROTO_TUNNEL_ID_MAIN = -2;
+}
+
+// PROTO_CMD_TUNNEL_PACKAGE
+message ProtoTunnelPackage
+{
+    // not null
+    int32 sourceTunnelsID = 1;
+    // count is zero then broadcast include self, main:-2 other:-1 worker_0:0 worker_1:1 worker_2:2...
+    repeated int32 targetTunnelsID = 2;
+    bool targetAllWorker = 3;
+    ProtoPackage innerProtoPackage = 5;
+}
+
+// PROTO_CMD_TUNNEL_CLIENT_FORWARD_MESSAGE
+message ProtoTunnelClientForwardMessage
+{
+    // not null
+    uint64 sourceGid = 1;
+    // count is zero then broadcast to all conn include self
+    repeated uint64 targetGid = 2;
+    ProtoPackage innerProtoPackage = 3;
+}
+
+// PROTO_CMD_TUNNEL_MAIN2WORKER_NEW_CLIENT
+message ProtoTunnelMain2WorkerNewClient
+{
+    int32 fd = 1;
+    uint64 gid = 2;
+}
+
+// PROTO_CMD_TUNNEL_WEBSOCKET_BROADCAST
+message ProtoTunnelWebsocketBroadcast
+{
+    bytes data = 1;
+};
+
+// PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION
+message ProtoTunnelWorker2OtherEventNewClientConnection
+{
+    uint64 gid = 1;
+};
+
+// PROTO_CMD_TUNNEL_OTHER2WORKER_TEST
+message ProtoTunnelOther2WorkerTest
+{
+    uint64 time = 1;
+};
+
+// PROOT_CMD_TUNNEL_WORKER2OTHER_LUAVM
+message ProtoTunnelWorker2OtherLuaVM
+{
+    uint64 gid = 1;
+    int32 workerIdx = 2;
+    ProtoPackage innerProtoPackage = 3;
+};
+
+// PROTO_CMD_TUNNEL_OTHERLUAVM2WORKERCONN
+message ProtoTunnelOtherLuaVM2WorkerConn
+{
+    uint64 gid = 1;
+    int32 workerIdx = 2;
+    ProtoPackage innerProtoPackage = 3;
+};
+
+// PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION
+message ProtoTunnelWorker2OtherEventCloseClientConnection
+{
+    uint64 gid = 1;
+};
+
+// PROTO_CMD_TUNNEL_OTHERLUAVM2WORKER_CLOSE_CLIENT_CONNECTION
+message ProtoTunnelOtherLuaVM2WorkerCloseClientConnection
+{
+    uint64 gid = 1;
+    int32 workerIdx = 2;
+};

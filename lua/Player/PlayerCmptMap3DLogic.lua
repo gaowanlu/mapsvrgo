@@ -1,0 +1,141 @@
+---@class PlayerCmptMap3DType:PlayerCmptBase
+---@field nowMapId integer
+
+local PlayerCmptBase = require("PlayerCmptBaseLogic");
+
+---@class PlayerCmptMap3D:PlayerCmptMap3DType
+local PlayerCmptMap3D = require("PlayerCmptMap3DData");
+
+local Log = require("Log");
+local TimeMgr = require("TimeMgrLogic");
+
+local Map3DMgr = require("Map3DMgrLogic");
+local ErrCode = require("ErrCode");
+
+---@param owner Player
+---@return PlayerCmptMap3D
+function PlayerCmptMap3D.new(owner)
+    local self = setmetatable(PlayerCmptBase.new(owner), PlayerCmptMap3D);
+
+    self.nowMapId = -1;
+
+    return self;
+end
+
+function PlayerCmptMap3D:OnTick()
+end
+
+function PlayerCmptMap3D:OnLogin()
+    self:LeaveCurrMap();
+end
+
+function PlayerCmptMap3D:OnLogout()
+    self:LeaveCurrMap();
+end
+
+---@return boolean
+function PlayerCmptMap3D:HasInMap()
+    return self.nowMapId > 0;
+end
+
+function PlayerCmptMap3D:LeaveCurrMap()
+    if self:HasInMap() then
+        local map = Map3DMgr.GetMap(self.nowMapId);
+        if map == nil then
+            return
+        end
+        if map:PlayerExitMap(self:GetPlayer():GetUserId()) then
+            self.nowMapId = -1;
+        end
+    end
+end
+
+---@param mapId integer
+---@return number
+function PlayerCmptMap3D:EnterNewMap(mapId)
+    local map = Map3DMgr.GetMap(mapId);
+    if map == nil then
+        return ErrCode.ERR_TARGET_MAP_NOT_FOUND;
+    end
+
+    if map:PlayerJoinMap(self:GetPlayer():GetPlayerID(), self:GetPlayer():GetUserId()) ~= true then
+        return ErrCode.ERR_UNKNOW;
+    end
+
+    local mapPlayer = map:GetMapPlayerByUserId(self:GetPlayer():GetUserId());
+    if mapPlayer == nil then
+        Log:Error("mapPlayer == nil");
+        return ErrCode.ERR_UNKNOW;
+    end
+
+    -- 设置玩家所在的地图ID
+    self.nowMapId = mapId;
+
+    -- 进地图直接发一次Map3DInitData PROTO_CMD_CS_MAP3D_NOTIFY_INIT_DATA
+    local protoCSMap3DNotifyInitData = {
+        userId = self:GetPlayer():GetUserId(),
+        x = mapPlayer.pos.x,
+        y = mapPlayer.pos.y,
+        z = mapPlayer.pos.z,
+        serverTime = map:GetLastTickTimeMS(),
+        xSize = map:GetSize().x,
+        ySize = map:GetSize().y,
+        zSize = map:GetSize().z,
+        mapId = map:GetMapId(),
+    };
+
+    local MsgHandler = require("MsgHandlerLogic");
+    MsgHandler:Send2Client(self:GetPlayer():GetClientGID(), self:GetPlayer():GetWorkerIdx(),
+        MsgHandler.ProtoCmd.PROTO_CMD_CS_MAP3D_NOTIFY_INIT_DATA, protoCSMap3DNotifyInitData);
+
+    return ErrCode.OK;
+end
+
+---@param mapId integer
+---@return number
+function PlayerCmptMap3D:MapEnterReq(mapId)
+    -- 只要请求加入地图就离开当前地图
+    self:LeaveCurrMap();
+    -- 加入目标地图
+    return self:EnterNewMap(mapId);
+end
+
+---@return number
+function PlayerCmptMap3D:MapLeaveReq()
+    self:LeaveCurrMap();
+    return ErrCode.OK;
+end
+
+---@return number
+function PlayerCmptMap3D:PingReq()
+    if self:HasInMap() then
+        local currMap = Map3DMgr.GetMap(self.nowMapId);
+        if currMap == nil then
+            return TimeMgr.GetMS();
+        end
+        return currMap:GetLastTickTimeMS();
+    end
+    return TimeMgr.GetMS();
+end
+
+function PlayerCmptMap3D:MapInputReq(message)
+    -- 如果目前没有加入任何地图则直接拒绝处理
+    if false == self:HasInMap() then
+        return;
+    end
+
+    local currMap = Map3DMgr.GetMap(self.nowMapId);
+    if currMap == nil then
+        return;
+    end
+
+    local dirX = message.dirX;
+    local dirY = message.dirY;
+    local dirZ = message.dirZ;
+    local seq = message.seq;
+    local clientTime = message.clientTime;
+
+    currMap:MapPlayerInput(self:GetPlayer():GetUserId(), dirX, dirY, dirZ, seq, clientTime);
+end
+
+return PlayerCmptMap3D;

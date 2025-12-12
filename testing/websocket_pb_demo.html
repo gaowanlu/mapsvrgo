@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>地图客户端 - WebSocket + Protobuf</title>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Hiragino Sans GB', "Microsoft YaHei", sans-serif;
+            background: #0b1220;
+            color: #e6edf3
+        }
+
+        #app {
+            display: flex;
+            height: 100%;
+            gap: 12px;
+            padding: 12px;
+            box-sizing: border-box
+        }
+
+        #left {
+            flex: 1;
+            display: flex;
+            flex-direction: column
+        }
+
+        canvas {
+            background: #0f1724;
+            border-radius: 8px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+            display: block
+        }
+
+        #right {
+            width: 380px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px
+        }
+
+        .card {
+            background: #0b1320;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04)
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            color: #9fb0c8;
+            margin-bottom: 6px
+        }
+
+        input,
+        select,
+        button,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: #081019;
+            color: #e6eef8;
+            box-sizing: border-box
+        }
+
+        button {
+            cursor: pointer
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 12px;
+            padding: 8px;
+            background: #04121a;
+            border-radius: 6px;
+            max-height: 220px;
+            overflow: auto;
+            color: #cbe7ff
+        }
+
+        .small {
+            font-size: 12px;
+            color: #7fa2c6
+        }
+
+        .muted {
+            color: #658aa6
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div id="left">
+            <canvas id="stage"></canvas>
+            <div class="card" style="margin-top:12px">
+                <div class="small">状态</div>
+                <div id="status" class="muted">未连接</div>
+            </div>
+        </div>
+
+        <div id="right">
+            <div class="card">
+                <label>WebSocket 地址</label>
+                <input id="wsUrl" value="ws://www.mfavant.xyz:20025" />
+                <label style="margin-top:8px">userId（客户端自身）</label>
+                <input id="selfUserId" value="1" />
+                <label style="margin-top:8px">password</label>
+                <input id="password" value="1" />
+                <div style="display:flex;gap:8px;margin-top:8px">
+                    <button id="btnConnect">连接</button>
+                    <button id="btnDisconnect">断开</button>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:8px">
+                    <button id="btnLogin">发送登录</button>
+                    <button id="btnEnterMap">进入地图(mapId=2)</button>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:8px">
+                    <button id="btnStartAutoInput">启动自动输入</button>
+                    <button id="btnStopAutoInput">停止自动输入</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="small">地图信息</div>
+                <pre id="mapInfo">尚未初始化</pre>
+            </div>
+
+            <div class="card">
+                <div class="small">日志</div>
+                <pre id="log">—</pre>
+            </div>
+
+            <div class="card">
+                <div class="small">说明</div>
+                <div class="small">• 本页面在运行时直接用 protobuf.js 解析你提供的 .proto 文本（内嵌）。</div>
+                <div class="small">• 若服务器使用自定义包头（如 TCP 的 8 字节长度头），WebSocket 通常直接传输裸 protobuf bytes；该页面发送/接收的都是裸
+                    ProtoPackage
+                    二进制（与你的 Node 客户端一致）。</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 使用 protobuf.js CDN -->
+    <script src="https://cdn.jsdmirror.com/npm/protobufjs/dist/protobuf.min.js"></script>
+    <script>
+        /*
+          说明：
+          - 我在浏览器端直接把你提供的 proto 文本拼成一个字符串（包含 enum & messages & ProtoPackage 等）。
+          - 使用 protobuf.parse(protoText) 生成 root，然后通过 root.lookupType('avant.ProtoPackage') 等来 (de)code。
+          - WebSocket 收到 ArrayBuffer，解析为 ProtoPackage；发送时把内层消息编码后塞入 ProtoPackage 的 protocol bytes，再 encode 并发送 ArrayBuffer。
+        */
+
+        const protoText = `
+// ==== proto_cmd.proto + other protos 集合（来自用户提供内容） ====
+syntax = "proto3";
+package avant;
+
+enum ProtoCmd
+{
+    PROTO_CMD_CS_REQ_EXAMPLE = 0;
+    PROTO_CMD_CS_RES_EXAMPLE = 1;
+    PROTO_CMD_TUNNEL_MAIN2WORKER_NEW_CLIENT = 2;
+    PROTO_CMD_TUNNEL_PACKAGE = 3;
+    PROTO_CMD_TUNNEL_CLIENT_FORWARD_MESSAGE = 4;
+    PROTO_CMD_TUNNEL_WEBSOCKET_BROADCAST = 5;
+    PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION = 6;
+    PROTO_CMD_TUNNEL_OTHER2WORKER_TEST = 7;
+    PROTO_CMD_LUA_TEST = 8;
+    PROTO_CMD_IPC_STREAM_AUTH_HANDSHAKE = 9;
+
+    PROOT_CMD_TUNNEL_WORKER2OTHER_LUAVM = 1001;
+    PROTO_CMD_TUNNEL_OTHERLUAVM2WORKERCONN = 1002;
+    PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION = 1003;
+    PROTO_CMD_TUNNEL_OTHERLUAVM2WORKER_CLOSE_CLIENT_CONNECTION = 1004;
+
+    PROTO_CMD_CS_REQ_LOGIN = 2001;
+    PROTO_CMD_CS_RES_LOGIN = 2002;
+    PROTO_CMD_CS_MAP_NOTIFY_INIT_DATA = 2003;
+    PROTO_CMD_CS_REQ_MAP_PING = 2004;
+    PROTO_CMD_CS_RES_MAP_PONG = 2005;
+    PROTO_CMD_CS_REQ_MAP_INPUT = 2006;
+    PROTO_CMD_CS_MAP_NOTIFY_STATE_DATA = 2007;
+    PROTO_CMD_CS_MAP_ENTER_REQ = 2008;
+    PROTO_CMD_CS_MAP_ENTER_RES = 2009;
+    PROTO_CMD_CS_MAP_LEAVE_REQ = 2010;
+    PROTO_CMD_CS_MAP_LEAVE_RES = 2011;
+}
+
+message ProtoPackage
+{
+    ProtoCmd cmd = 1;
+    bytes protocol = 2;
+}
+
+// PROTO_CMD_CS_REQ_EXAMPLE
+message ProtoCSReqExample
+{
+    bytes testContext = 1;
+}
+message ProtoCSResExample
+{
+    bytes testContext = 1;
+}
+
+// PROTO_CMD_CS_REQ_LOGIN 登录
+message ProtoCSReqLogin
+{
+    string userId=1;
+    string password=2;
+}
+message ProtoCSResLogin
+{
+    int32 ret=1;
+    string sessionId=2;
+}
+
+// PROTO_CMD_CS_MAP_NOTIFY_INIT_DATA
+message ProtoCSMapNotifyInitData
+{
+    string userId=1;
+    int32 x=2;
+    int32 y=3;
+    uint64 serverTime=4;
+    int32 tileSize=5;
+    int32 width=6;
+    int32 height=7;
+    int32 mapId=8;
+}
+
+// PROTO_CMD_CS_REQ_MAP_PING / PONG
+message ProtoCSReqMapPing
+{
+    uint64 clientTime=1;
+}
+message ProtoCSResMapPong
+{
+    uint64 clientTime=1;
+    uint64 serverTime=2;
+}
+
+// PROTO_CMD_CS_REQ_MAP_INPUT
+message ProtoCSReqMapInput 
+{
+    int32 dirX=1;
+    int32 dirY=2;
+    uint32 seq=3;
+    uint64 clientTime=4;
+}
+
+// MAP PLAYER PAYLOAD & STATE
+message ProtoMapPlayerPayload
+{
+    string userId=1;
+    int32 x=2;
+    int32 y=3;
+    int32 vX=4;
+    int32 vY=5;
+    uint32 lastSeq=6;
+    uint64 lastClientTime=7;
+}
+message ProtoCSMapNotifyStateData
+{
+    uint64 serverTime=1;
+    repeated ProtoMapPlayerPayload players=2;
+}
+
+// ENTER / LEAVE
+message ProtoCSMapEnterReq
+{
+    uint32 mapId=1;
+}
+message ProtoCSMapEnterRes
+{
+    int32 ret=1;
+    uint32 mapId=2;
+}
+message ProtoCSMapLeaveReq 
+{
+    int32 reserved=1;
+}
+message ProtoCSMapLeaveRes
+{
+    int32 ret=1;
+}
+
+// IPC HANDSHAKE
+message ProtoIPCStreamAuthHandshake
+{
+    bytes appId = 1;
+}
+`;
+
+        // 解析 proto 文本并构建 root
+        const root = protobuf.parse(protoText).root;
+
+        // 取出我们需要的 types & enum
+        const ProtoPackage = root.lookupType("avant.ProtoPackage");
+        const ProtoCmdEnum = root.lookupEnum("avant.ProtoCmd").values;
+
+        // inner types
+        const T_ProtoCSReqLogin = root.lookupType("avant.ProtoCSReqLogin");
+        const T_ProtoCSResLogin = root.lookupType("avant.ProtoCSResLogin");
+        const T_ProtoCSMapNotifyInitData = root.lookupType("avant.ProtoCSMapNotifyInitData");
+        const T_ProtoCSMapNotifyStateData = root.lookupType("avant.ProtoCSMapNotifyStateData");
+        const T_ProtoCSReqMapInput = root.lookupType("avant.ProtoCSReqMapInput");
+        const T_ProtoCSMapEnterReq = root.lookupType("avant.ProtoCSMapEnterReq");
+        const T_ProtoCSMapEnterRes = root.lookupType("avant.ProtoCSMapEnterRes");
+        const T_ProtoCSReqExample = root.lookupType("avant.ProtoCSReqExample");
+        const T_ProtoCSResExample = root.lookupType("avant.ProtoCSResExample");
+        const T_ProtoCSReqMapPing = root.lookupType("avant.ProtoCSReqMapPing");
+        const T_ProtoCSResMapPong = root.lookupType("avant.ProtoCSResMapPong");
+
+        // UI 元素
+        const canvas = document.getElementById('stage');
+        const ctx = canvas.getContext('2d');
+        let W = 1200, H = 760;
+        canvas.width = W; canvas.height = H;
+
+        const statusEl = document.getElementById('status');
+        const logEl = document.getElementById('log');
+        const mapInfoEl = document.getElementById('mapInfo');
+        const wsUrlInput = document.getElementById('wsUrl');
+        const selfUserIdInput = document.getElementById('selfUserId');
+        const passwordInput = document.getElementById('password');
+
+        const btnConnect = document.getElementById('btnConnect');
+        const btnDisconnect = document.getElementById('btnDisconnect');
+        const btnLogin = document.getElementById('btnLogin');
+        const btnEnterMap = document.getElementById('btnEnterMap');
+        const btnStartAutoInput = document.getElementById('btnStartAutoInput');
+        const btnStopAutoInput = document.getElementById('btnStopAutoInput');
+
+        function log(...args) {
+            const s = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+            console.log(s);
+            logEl.textContent = (new Date()).toLocaleTimeString() + ' ' + s + '\n' + logEl.textContent;
+        }
+
+        // 地图/玩家状态（坐标统一使用像素）
+        let mapState = {
+            inited: false,
+            tileSize: 50,
+            width_tiles: 4000 / 50,  // 示例：假设初始为 4000 像素宽，tileSize=50，则 80 tiles
+            height_tiles: 4000 / 50,
+            mapPixelWidth: 4000,
+            mapPixelHeight: 4000,
+            mapId: null,
+            serverTime: null,
+            selfUserId: null
+        };
+        let players = new Map(); // userId -> {x,y,vX,vY,lastSeq,lastClientTime}，x/y 为像素
+        let cam = { x: 0, y: 0, scale: 1 };  // cam.x/y 为像素偏移
+
+        // websocket
+        let ws = null;
+        let autoInputTimer = null;
+        let lastSeq = 0;
+
+        // resize canvas
+        function resize() {
+            W = Math.max(600, window.innerWidth - 420);
+            H = window.innerHeight - 24;
+            canvas.width = W; canvas.height = H;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 绘制循环
+        let lastTick = performance.now();
+        function draw() {
+            const now = performance.now();
+            const dt = (now - lastTick) / 1000; lastTick = now;
+
+            ctx.clearRect(0, 0, W, H);
+
+            const tile = mapState.tileSize || 50;
+            const camWorldX = cam.x;  // 像素
+            const camWorldY = cam.y;  // 像素
+            const offsetX = camWorldX % tile;
+            const offsetY = camWorldY % tile;
+
+            // 网格（仅绘制可见范围的对齐网格线）
+            const cols = Math.ceil(W / tile) + 2;
+            const rows = Math.ceil(H / tile) + 2;
+            ctx.save();
+            ctx.translate(-offsetX, -offsetY);
+            ctx.beginPath();
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.14;
+            for (let i = -1; i < cols; i++) {
+                const x = i * tile;
+                ctx.moveTo(x, -tile);
+                ctx.lineTo(x, H + tile);
+            }
+            for (let j = -1; j < rows; j++) {
+                const y = j * tile;
+                ctx.moveTo(-tile, y);
+                ctx.lineTo(W + tile, y);
+            }
+            ctx.strokeStyle = '#1f3a4a';
+            ctx.stroke();
+            ctx.restore();
+
+            // 玩家（屏幕坐标 = 世界像素 - cam 像素）
+            for (const [uid, p] of players) {
+                const screenX = p.x - camWorldX;
+                const screenY = p.y - camWorldY;
+                const isSelf = String(uid) === String(mapState.selfUserId);
+
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, Math.max(4, tile * 0.22), 0, Math.PI * 2);
+                ctx.fillStyle = isSelf ? '#20c997' : '#3aa0ff';
+                ctx.fill();
+
+                // shadow
+                ctx.globalAlpha = 0.14;
+                ctx.fillStyle = '#000';
+                ctx.fillRect(screenX - tile * 0.4, screenY + tile * 0.22, tile * 0.8, tile * 0.14);
+                ctx.globalAlpha = 1;
+
+                // text
+                ctx.fillStyle = '#e6f6ff';
+                ctx.font = '12px sans-serif';
+                ctx.fillText(uid, screenX + 8, screenY - 6);
+                ctx.fillStyle = '#cfe8ff';
+                ctx.font = '11px monospace';
+                ctx.fillText(`(${Math.round(p.x)},${Math.round(p.y)})`, screenX + 8, screenY + 8);
+            }
+
+            // HUD
+            ctx.fillStyle = 'rgba(2,8,14,0.6)';
+            ctx.fillRect(8, 8, 300, 72);
+            ctx.fillStyle = '#e6f6ff';
+            ctx.font = '12px sans-serif';
+            ctx.fillText(`Map: ${mapState.mapId ?? '-'}  Tile: ${mapState.tileSize} px  Size: ${mapState.mapPixelWidth}x${mapState.mapPixelHeight}`, 16, 30);
+            ctx.fillText(`Players: ${players.size}`, 16, 48);
+            ctx.fillText(`Cam: ${Math.round(cam.x)}, ${Math.round(cam.y)}`, 16, 66);
+
+            requestAnimationFrame(draw);
+        }
+        requestAnimationFrame(draw);
+
+        // 帮助：将 ArrayBuffer -> Uint8Array
+        function toUint8(buf) {
+            if (buf instanceof Uint8Array) return buf;
+            return new Uint8Array(buf);
+        }
+
+        // 解析 ProtoPackage（avant.ProtoPackage）
+        function decodeProtoPackageFromBuffer(ab) {
+            try {
+                const u8 = toUint8(ab);
+                const msg = ProtoPackage.decode(u8);
+                const obj = ProtoPackage.toObject(msg, { longs: String, enums: String, bytes: Array });
+                return { msg, obj };
+            } catch (e) {
+                log('ProtoPackage decode error', e.message);
+                return null;
+            }
+        }
+
+        // 编码并发送一个内层消息（innerType：protobuf Type， payloadObj：plain object， cmdNum: ProtoCmd 值）
+        function sendInnerProto(innerType, payloadObj, cmdNum) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('WS not open, cannot send', cmdNum);
+                return;
+            }
+            try {
+                const innerMsg = innerType.create(payloadObj);
+                const innerBuf = innerType.encode(innerMsg).finish(); // Uint8Array
+                const pkgPayload = { cmd: cmdNum, protocol: innerBuf };
+                // console.log('pkgPayload', pkgPayload);
+                const pkgMsg = ProtoPackage.create(pkgPayload);
+                // console.log('pkgMsg', pkgMsg);
+                const pkgBuf = ProtoPackage.encode(pkgMsg).finish();
+                // console.log('send', pkgBuf);
+                ws.send(pkgBuf);
+            } catch (e) {
+                log('sendInnerProto error', e.message);
+            }
+        }
+
+        // 接收并处理服务器消息
+        function onServerPackageArrayBuffer(ab) {
+            const parsed = decodeProtoPackageFromBuffer(ab);
+            if (!parsed) return;
+            const { msg, obj } = parsed;
+            const cmdName = obj.cmd; // e.g. "PROTO_CMD_CS_MAP_NOTIFY_STATE_DATA" (since enums are converted to string)
+            // log('RECV ProtoPackage cmd=', cmdName);
+
+            // 根据 cmd 解码 protocol 字段（Uint8Array）
+            const innerBytes = msg.protocol; // Uint8Array
+            // 注意：msg.protocol is a Uint8Array
+            switch (obj.cmd) {
+                case "PROTO_CMD_CS_RES_LOGIN":
+                case ProtoCmdEnum.PROTO_CMD_CS_RES_LOGIN:
+                    try {
+                        const resLogin = T_ProtoCSResLogin.decode(innerBytes);
+                        const loginObj = T_ProtoCSResLogin.toObject(resLogin, { longs: String });
+                        log('PROTO_CMD_CS_RES_LOGIN', loginObj);
+                    } catch (e) { log('decode login err', e.message); }
+                    break;
+
+                case "PROTO_CMD_CS_MAP_NOTIFY_INIT_DATA":
+                case ProtoCmdEnum.PROTO_CMD_CS_MAP_NOTIFY_INIT_DATA:
+                    try {
+                        const init = T_ProtoCSMapNotifyInitData.decode(innerBytes);
+                        const initObj = T_ProtoCSMapNotifyInitData.toObject(init, { longs: String });
+                        handleInit(initObj);
+                        log('PROTO_CMD_CS_MAP_NOTIFY_INIT_DATA', initObj);
+                    } catch (e) { log('decode init err', e.message); }
+                    break;
+
+                case "PROTO_CMD_CS_MAP_NOTIFY_STATE_DATA":
+                case ProtoCmdEnum.PROTO_CMD_CS_MAP_NOTIFY_STATE_DATA:
+                    try {
+                        const st = T_ProtoCSMapNotifyStateData.decode(innerBytes);
+                        const stObj = T_ProtoCSMapNotifyStateData.toObject(st, { longs: String });
+                        handleState(stObj);
+                        // console.log('PROTO_CMD_CS_MAP_NOTIFY_STATE_DATA', stObj);
+                        //log('PROTO_CMD_CS_MAP_NOTIFY_STATE_DATA', stObj);
+                    } catch (e) { log('decode state err', e.message); }
+                    break;
+
+                case "PROTO_CMD_CS_MAP_ENTER_RES":
+                case ProtoCmdEnum.PROTO_CMD_CS_MAP_ENTER_RES:
+                    try {
+                        const enterRes = T_ProtoCSMapEnterRes.decode(innerBytes);
+                        const enterObj = T_ProtoCSMapEnterRes.toObject(enterRes, { longs: String });
+                        log('PROTO_CMD_CS_MAP_ENTER_RES', enterObj);
+                    } catch (e) { log('decode enterres err', e.message); }
+                    break;
+
+                case "PROTO_CMD_CS_RES_MAP_PONG":
+                case ProtoCmdEnum.PROTO_CMD_CS_RES_MAP_PONG:
+                    try {
+                        const pong = T_ProtoCSResMapPong.decode(innerBytes);
+                        log('PROTO_CMD_CS_RES_MAP_PONG', T_ProtoCSResMapPong.toObject(pong, { longs: String }));
+                    } catch (e) { log('decode pong err', e.message); }
+                    break;
+
+                case "PROTO_CMD_CS_RES_EXAMPLE":
+                case ProtoCmdEnum.PROTO_CMD_CS_RES_EXAMPLE:
+                    try {
+                        const ex = T_ProtoCSResExample.decode(innerBytes);
+                        const exObj = T_ProtoCSResExample.toObject(ex, { bytes: Array });
+                        // if testContext is bytes (array) -> convert to string
+                        if (exObj.testContext && Array.isArray(exObj.testContext)) {
+                            try { exObj.testContextStr = new TextDecoder().decode(Uint8Array.from(exObj.testContext)); } catch (e) { }
+                        }
+                        // log('PROTO_CMD_CS_RES_EXAMPLE', exObj);
+                    } catch (e) { log('decode example err', e.message); }
+                    break;
+
+                default:
+                    // 未知命令，尝试打印数字值
+                    log('未知或未处理 cmd:', obj.cmd);
+                    break;
+            }
+        }
+
+        // 处理 INIT（坐标为像素）
+        function handleInit(init) {
+            mapState.inited = true;
+            mapState.tileSize = Number(init.tileSize) || mapState.tileSize;
+            mapState.width_tiles = Number(init.width) || mapState.width_tiles;
+            mapState.height_tiles = Number(init.height) || mapState.height_tiles;
+            mapState.mapPixelWidth = mapState.width_tiles * mapState.tileSize;
+            mapState.mapPixelHeight = mapState.height_tiles * mapState.tileSize;
+            mapState.mapId = init.mapId;
+            mapState.serverTime = init.serverTime;
+            mapState.selfUserId = init.userId || selfUserIdInput.value;
+
+            const px = Number(init.x) || 0;  // 像素
+            const py = Number(init.y) || 0;  // 像素
+            // 相机居中于玩家（像素单位）
+            cam.x = px - W / 2;
+            cam.y = py - H / 2;
+            // 可选：边界钳制（地图从0,0开始，无负值）
+            cam.x = Math.max(0, Math.min(cam.x, mapState.mapPixelWidth - W));
+            cam.y = Math.max(0, Math.min(cam.y, mapState.mapPixelHeight - H));
+
+            players.set(String(mapState.selfUserId), { x: px, y: py, vX: 0, vY: 0, lastSeq: 0, lastClientTime: null });
+            mapInfoEl.textContent = JSON.stringify(mapState, null, 2);
+        }
+
+        // 处理 STATE 更新（坐标为像素）
+        function handleState(stObj) {
+            mapState.serverTime = stObj.serverTime;
+
+            // 更新玩家数据
+            for (const p of stObj.players) {
+                players.set(p.userId, {
+                    x: p.x,  // 像素
+                    y: p.y,  // 像素
+                    vX: p.vX,
+                    vY: p.vY,
+                    lastSeq: p.lastSeq,
+                    lastClientTime: p.lastClientTime
+                });
+            }
+
+            // 摄像机跟随自己（像素单位，居中）
+            const self = players.get(mapState.selfUserId);
+            if (self) {
+                const targetCamX = self.x - W / 2;
+                const targetCamY = self.y - H / 2;
+                // 可选：平滑跟随（lerp）
+                // cam.x += (targetCamX - cam.x) * 0.1;
+                // cam.y += (targetCamY - cam.y) * 0.1;
+                // 直接跟随
+                cam.x = targetCamX;
+                cam.y = targetCamY;
+                // 边界钳制
+                cam.x = Math.max(0, Math.min(cam.x, mapState.mapPixelWidth - W));
+                cam.y = Math.max(0, Math.min(cam.y, mapState.mapPixelHeight - H));
+            }
+        }
+
+        // WS 连接逻辑
+        function connectWS(url) {
+            if (ws) {
+                try { ws.close(); } catch (e) { }
+                ws = null;
+            }
+            try {
+                ws = new WebSocket(url);
+                ws.binaryType = 'arraybuffer';
+                statusEl.textContent = '连接中...';
+
+                ws.onopen = () => {
+                    statusEl.textContent = '已连接';
+                    log('WebSocket open', url);
+                    // 连接成功后可以自动发送登录或示例请求（这里不自动发送登录，交给用户点击）
+                };
+
+                ws.onmessage = (ev) => {
+                    // ev.data 是 ArrayBuffer（因为 binaryType=arraybuffer）或者字符串
+                    const data = ev.data;
+                    if (typeof data === 'string') {
+                        // 有些服务器可能把 JSON 文本放在 ws.text 上
+                        try {
+                            const obj = JSON.parse(data);
+                            log('收到文本消息', obj);
+                        } catch (e) {
+                            log('收到文本消息(非JSON)', data.slice(0, 200));
+                        }
+                    } else if (data instanceof ArrayBuffer) {
+                        onServerPackageArrayBuffer(data);
+                    } else if (ArrayBuffer.isView(data)) {
+                        onServerPackageArrayBuffer(data.buffer);
+                    } else {
+                        log('未知消息类型', typeof data);
+                    }
+                };
+
+                ws.onclose = () => {
+                    statusEl.textContent = '已断开';
+                    log('WS closed');
+                    ws = null;
+                };
+
+                ws.onerror = (e) => {
+                    statusEl.textContent = '错误';
+                    log('WS error', e && e.message ? e.message : e);
+                };
+            } catch (e) {
+                statusEl.textContent = '连接异常';
+                log('connect exception', e.message);
+            }
+        }
+
+        function disconnectWS() {
+            if (ws) {
+                try { ws.close(); } catch (e) { }
+                ws = null;
+                statusEl.textContent = '已断开';
+                log('主动断开');
+            }
+        }
+
+        // UI 按钮事件
+        btnConnect.addEventListener('click', () => {
+            const url = wsUrlInput.value.trim();
+            if (!url) return alert('请填写 ws 地址');
+            connectWS(url);
+        });
+        btnDisconnect.addEventListener('click', disconnectWS);
+
+        // 发送登录
+        btnLogin.addEventListener('click', () => {
+            const uid = selfUserIdInput.value.trim();
+            const pw = passwordInput.value;
+            console.log("登录", { uid, pw });
+            if (!uid) return alert('请填写 userId');
+            // 构造 ProtoCSReqLogin，并包装成 ProtoPackage，发送
+            sendInnerProto(T_ProtoCSReqLogin, { userId: uid, password: pw }, ProtoCmdEnum.PROTO_CMD_CS_REQ_LOGIN);
+            log('发送登录', { userId: uid, password: pw });
+        });
+
+        // 进入地图（mapId=2）
+        btnEnterMap.addEventListener('click', () => {
+            sendInnerProto(T_ProtoCSMapEnterReq, { mapId: 2 }, ProtoCmdEnum.PROTO_CMD_CS_MAP_ENTER_REQ);
+            log('发送进入地图 mapId=2');
+        });
+
+        // 自动输入（周期发送 ProtoCSReqMapInput）
+        btnStartAutoInput.addEventListener('click', () => {
+            if (autoInputTimer) return;
+            autoInputTimer = setInterval(() => {
+                // 随机方向举例
+                const dirs = [{ x: -4, y: -3 }, { x: 70, y: 24 }, { x: -34, y: -54 }, { x: 30, y: 24 }, { x: 0, y: 0 }];
+                const d = dirs[Math.floor(Math.random() * dirs.length)];
+                lastSeq++;
+                sendInnerProto(T_ProtoCSReqMapInput, { dirX: d.x, dirY: d.y, seq: lastSeq, clientTime: Date.now() }, ProtoCmdEnum.PROTO_CMD_CS_REQ_MAP_INPUT);
+                // 也可以每次发送一个 example test to measure RTT
+                const testContext = new TextEncoder().encode(String(Date.now()));
+                sendInnerProto(T_ProtoCSReqExample, { testContext }, ProtoCmdEnum.PROTO_CMD_CS_REQ_EXAMPLE);
+            }, 1000);
+            log('自动输入已启动');
+        });
+        btnStopAutoInput.addEventListener('click', () => {
+            if (autoInputTimer) { clearInterval(autoInputTimer); autoInputTimer = null; log('自动输入已停止'); }
+        });
+
+        // 键盘移动摄像机（像素单位）
+        window.addEventListener('keydown', (e) => {
+            const speed = 100;  // 像素/按键（可调整）
+            if (e.key === 'ArrowLeft') cam.x -= speed;
+            if (e.key === 'ArrowRight') cam.x += speed;
+            if (e.key === 'ArrowUp') cam.y -= speed;
+            if (e.key === 'ArrowDown') cam.y += speed;
+            // 边界钳制
+            if (mapState.inited) {
+                cam.x = Math.max(0, Math.min(cam.x, mapState.mapPixelWidth - W));
+                cam.y = Math.max(0, Math.min(cam.y, mapState.mapPixelHeight - H));
+            }
+        });
+
+        // 鼠标拖拽平移摄像机（像素单位）
+        let dragging = false;
+        let lastMouse = null;
+        canvas.addEventListener('mousedown', (e) => {
+            dragging = true;
+            lastMouse = { x: e.clientX, y: e.clientY };
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (!dragging || !lastMouse) return;
+            const dx = e.clientX - lastMouse.x;
+            const dy = e.clientY - lastMouse.y;
+            lastMouse = { x: e.clientX, y: e.clientY };
+            cam.x -= dx;  // 直接像素偏移（scale=1）
+            cam.y -= dy;
+            // 边界钳制
+            if (mapState.inited) {
+                cam.x = Math.max(0, Math.min(cam.x, mapState.mapPixelWidth - W));
+                cam.y = Math.max(0, Math.min(cam.y, mapState.mapPixelHeight - H));
+            }
+        });
+        window.addEventListener('mouseup', () => { dragging = false; lastMouse = null; });
+
+        // 当页面关闭时关闭 ws
+        window.addEventListener('beforeunload', () => { if (ws) ws.close(); });
+
+        /* 说明：
+         - 如果你的服务器在 WebSocket 层对数据做了额外封包（例如在 payload 前再加 cmd 字符串或者 8 字节头），
+           需要在 onmessage 中先剥离这些头再交给 decodeProtoPackageFromBuffer。
+         - 上面代码假设服务器在 WebSocket 上直接收发裸的 ProtoPackage bytes（与你 Node 客户端一致）。
+        */
+
+        let keyState = { w: false, a: false, s: false, d: false };
+        let pendingDir = { x: 0, y: 0 };   // 最新按键方向
+        let currentDir = { x: 0, y: 0 };   // 已发送给服务器的方向
+        const MOVE_SPEED = 200;            // 像素/秒（你可调整）
+        const SEND_INTERVAL = 80;          // 每 80ms 最多发送 1 次
+
+        // 计算最新方向
+        function updatePendingDir() {
+            let dx = 0, dy = 0;
+            if (keyState.w) dy -= MOVE_SPEED;
+            if (keyState.s) dy += MOVE_SPEED;
+            if (keyState.a) dx -= MOVE_SPEED;
+            if (keyState.d) dx += MOVE_SPEED;
+            pendingDir = { x: dx, y: dy };
+        }
+
+        // 键盘按下
+        window.addEventListener("keydown", (e) => {
+            const k = e.key.toLowerCase();
+            if (k in keyState) {
+                if (!keyState[k]) {
+                    keyState[k] = true;
+                    updatePendingDir();
+                }
+            }
+        });
+
+        // 键盘松开
+        window.addEventListener("keyup", (e) => {
+            const k = e.key.toLowerCase();
+            if (k in keyState) {
+                if (keyState[k]) {
+                    keyState[k] = false;
+                    updatePendingDir();
+                }
+            }
+        });
+
+        // 方向发送循环（80ms 检查一次）
+        setInterval(() => {
+            if (!mapState.inited) return;
+
+            // 若方向无变化，则不发
+            if (pendingDir.x === currentDir.x && pendingDir.y === currentDir.y)
+                return;
+
+            // 发送
+            lastSeq++;
+            sendInnerProto(
+                T_ProtoCSReqMapInput,
+                {
+                    dirX: pendingDir.x,
+                    dirY: pendingDir.y,
+                    seq: lastSeq,
+                    clientTime: Date.now()
+                },
+                ProtoCmdEnum.PROTO_CMD_CS_REQ_MAP_INPUT
+            );
+
+            currentDir = { ...pendingDir };
+
+        }, SEND_INTERVAL);
+
+    </script>
+</body>
+
+</html>

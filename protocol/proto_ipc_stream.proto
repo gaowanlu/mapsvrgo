@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package avant;
+
+option go_package = "/proto_res";
+
+// PROTO_CMD_IPC_STREAM_AUTH_HANDSHAKE
+message ProtoIPCStreamAuthHandshake
+{
+    bytes appId = 1;
+}

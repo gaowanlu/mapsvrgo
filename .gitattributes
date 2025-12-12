@@ -1,0 +1,4 @@
+# 强制所有文件都区分大小写（Linux/macOS/Windows 都生效）
+* text=auto eol=lf
+# 强制文件名大小写敏感
+* case-sensitive

@@ -1,0 +1,189 @@
+syntax = "proto3";
+
+package avant;
+
+option go_package = "/proto_res";
+
+// PROTO_CMD_CS_REQ_EXAMPLE
+message ProtoCSReqExample
+{
+    bytes testContext = 1;
+}
+
+// PROTO_CMD_CS_RES_EXAMPLE
+message ProtoCSResExample
+{
+    bytes testContext = 1;
+}
+
+// PROTO_CMD_CS_REQ_LOGIN 登录
+message ProtoCSReqLogin
+{
+    string userId=1;
+    string password=2;
+}
+
+// PROTO_CMD_CS_RES_LOGIN 登录返回
+message ProtoCSResLogin
+{
+    int32 ret=1;
+    string sessionId=2;
+}
+
+// PROTO_CMD_CS_MAP_NOTIFY_INIT_DATA 进入地图发送init数据
+message ProtoCSMapNotifyInitData
+{
+    string userId=1;
+    int32 x=2;
+    int32 y=3;
+    uint64 serverTime=4;
+    int32 tileSize=5;
+    int32 width=6;
+    int32 height=7;
+    int32 mapId=8;
+}
+
+// PROTO_CMD_CS_REQ_MAP_PING 地图内客户端心跳请求
+message ProtoCSReqMapPing
+{
+    uint64 clientTime=1;
+}
+
+// PROTO_CMD_CS_RES_MAP_PONG 地图内服务器响应客户端的心跳请求
+message ProtoCSResMapPong
+{
+    uint64 clientTime=1;
+    uint64 serverTime=2;
+}
+
+// PROTO_CMD_CS_REQ_MAP_INPUT 地图内客户端上报输入
+message ProtoCSReqMapInput 
+{
+    int32 dirX=1;
+    int32 dirY=2;
+    uint32 seq=3;
+    uint64 clientTime=4;
+}
+
+// PROTO_CMD_CS_MAP_NOTIFY_STATE_DATA 地图服务器同步状态给客户端
+message ProtoMapPlayerPayload
+{
+    string userId=1;
+    int32 x=2;
+    int32 y=3;
+    int32 vX=4;
+    int32 vY=5;
+    uint32 lastSeq=6;
+    uint64 lastClientTime=7;
+}
+message ProtoCSMapNotifyStateData
+{
+    uint64 serverTime=1;
+    repeated ProtoMapPlayerPayload players=2;
+}
+
+// PROTO_CMD_CS_MAP_ENTER_REQ 进入地图请求
+message ProtoCSMapEnterReq
+{
+    uint32 mapId=1;
+}
+
+// PROTO_CMD_CS_MAP_ENTER_RES 进入地图返回
+message ProtoCSMapEnterRes
+{
+    int32 ret=1;
+    uint32 mapId=2;
+}
+
+// PROTO_CMD_CS_MAP_LEAVE_REQ 离开地图请求
+message ProtoCSMapLeaveReq 
+{
+    int32 reserved=1;
+}
+
+// PROTO_CMD_CS_MAP_LEAVE_RES 离开地图返回
+message ProtoCSMapLeaveRes
+{
+    int32 ret=1;
+}
+
+// PROTO_CMD_CS_MAP3D_NOTIFY_INIT_DATA 进入地图3D发送init数据
+message ProtoCSMap3DNotifyInitData
+{
+    string userId=1;
+    int32 x=2;
+    int32 y=3;
+    uint64 serverTime=4;
+    int32 xSize=6;
+    int32 ySize=7;
+    int32 zSize=8;
+    int32 mapId=9;
+    int32 z=10;
+}
+
+// PROTO_CMD_CS_REQ_MAP3D_PING 地图3D内客户端心跳请求
+message ProtoCSReqMap3DPing
+{
+    uint64 clientTime=1;
+}
+
+// PROTO_CMD_CS_RES_MAP3D_PONG 地图3D内服务器响应客户端的心跳请求
+message ProtoCSResMap3DPong
+{
+    uint64 clientTime=1;
+    uint64 serverTime=2;
+}
+
+// PROTO_CMD_CS_REQ_MAP3D_INPUT 地图3D内客户端上报输入
+message ProtoCSReqMap3DInput 
+{
+    int32 dirX=1;
+    int32 dirY=2;
+    int32 dirZ=3;
+    uint32 seq=4;
+    uint64 clientTime=5;
+}
+
+// PROTO_CMD_CS_MAP3D_NOTIFY_STATE_DATA 地图3D服务器同步状态给客户端
+message ProtoMap3DPlayerPayload
+{
+    string userId=1;
+    int32 x=2;
+    int32 y=3;
+    int32 z=4;
+    int32 vX=5;
+    int32 vY=6;
+    int32 vZ=7;
+    uint32 lastSeq=8;
+    uint64 lastClientTime=9;
+}
+message ProtoCSMap3DNotifyStateData
+{
+    uint64 serverTime=1;
+    repeated ProtoMap3DPlayerPayload players=2;
+}
+
+// PROTO_CMD_CS_MAP3D_ENTER_REQ 进入地图3D请求
+message ProtoCSMap3DEnterReq
+{
+    uint32 mapId=1;
+}
+
+// PROTO_CMD_CS_MAP3D_ENTER_RES 进入地图3D返回
+message ProtoCSMap3DEnterRes
+{
+    int32 ret=1;
+    uint32 mapId=2;
+}
+
+// PROTO_CMD_CS_MAP3D_LEAVE_REQ 离开地图3D请求
+message ProtoCSMap3DLeaveReq 
+{
+    int32 reserved=1;
+}
+
+// PROTO_CMD_CS_MAP3D_LEAVE_RES 离开地图3D返回
+message ProtoCSMap3DLeaveRes
+{
+    int32 ret=1;
+}
