@@ -98,7 +98,7 @@ message ProtoCSMapEnterRes
 // PROTO_CMD_CS_MAP_LEAVE_REQ 离开地图请求
 message ProtoCSMapLeaveReq 
 {
-    int32 reserved=1;
+    int32 nothing=1;
 }
 
 // PROTO_CMD_CS_MAP_LEAVE_RES 离开地图返回
@@ -179,7 +179,7 @@ message ProtoCSMap3DEnterRes
 // PROTO_CMD_CS_MAP3D_LEAVE_REQ 离开地图3D请求
 message ProtoCSMap3DLeaveReq 
 {
-    int32 reserved=1;
+    int32 nothing=1;
 }
 
 // PROTO_CMD_CS_MAP3D_LEAVE_RES 离开地图3D返回

@@ -49,4 +49,4 @@ enum ProtoCmd
 enum ProtoErrCode
 {
     OK=0;
-};
+}
