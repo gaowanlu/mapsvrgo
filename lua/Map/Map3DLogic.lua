@@ -3,6 +3,11 @@
 ---@field y integer
 ---@field z integer
 
+---@class Vec3f
+---@field x number
+---@field y number
+---@field z number
+
 ---@class Map3DDbDataType
 ---@field id integer 地图ID
 ---@field TICK_RATE integer 帧率
@@ -17,6 +22,9 @@
 ---@field v Vec3i 速度
 ---@field gravity integer 重力
 ---@field weight integer 重量
+---@field lastSeq integer 最后收到并应用的客户端输入seq
+---@field lastClientTime number 客户端发送该seq时的客户端时间(ms)
+---@field dir Vec3f 方向
 
 ---@class Map3DType
 ---@field MapDbData Map3DDbDataType
@@ -96,8 +104,8 @@ end
 ---@return Vec3i
 function Map3D:FindSpawnPoint()
     local x = self.MapDbData.size.x // 2;
-    local y = self.MapDbData.size.y // 2;
-    local z = 0;
+    local y = 0;
+    local z = self.MapDbData.size.z // 2;
     return { x = x, y = y, z = z };
 end
 
@@ -106,13 +114,53 @@ end
 ---@param userId string
 ---@return boolean
 function Map3D:PlayerJoinMap(playerId, userId)
-    return false;
+    if self.players[userId] ~= nil then
+        return false;
+    end
+
+    Log:Error("Map3D PlayerJoinMap id %s playerId %s userId %s",
+        tostring(self.MapDbData.id),
+        tostring(playerId),
+        tostring(userId));
+
+    local spawnPoint = self:FindSpawnPoint();
+
+    ---@type Map3DPlayerType
+    local newMap3DPlayer = {
+        userId = userId,
+        pos = spawnPoint,
+        v = { x = 0, y = 0, z = 0 },
+        gravity = 1,
+        weight = 1,
+        lastSeq = 0,
+        lastClientTime = 0,
+        dir = { x = 0, y = 0, z = 0 },
+    };
+
+    self.players[userId] = newMap3DPlayer;
+
+    -- TODO: 加入地图八叉树
+
+    return true;
 end
 
 -- 玩家离开地图
 ---@param userId string
 ---@return boolean
 function Map3D:PlayerExitMap(userId)
+    Log:Error("Map3D PlayerExitMap id %s userId %s",
+        tostring(self.MapDbData.id),
+        userId);
+
+    ---@type Map3DPlayerType
+    local targetPlayer = self.players[userId];
+    if targetPlayer ~= nil then
+        -- TODO: 将玩家从八叉树中移除
+
+        self.players[userId] = nil;
+        return true;
+    end
+
     return false;
 end
 
@@ -120,7 +168,7 @@ end
 ---@param dirX number
 ---@param dirY number
 ---@param dirZ number
----@param seq number
+---@param seq integer
 ---@param clientTime number
 function Map3D:MapPlayerInput(userId,
                               dirX,
@@ -128,6 +176,38 @@ function Map3D:MapPlayerInput(userId,
                               dirZ,
                               seq,
                               clientTime)
+    local map3DPlayer = self.players[userId];
+
+    if map3DPlayer == nil then
+        return;
+    end
+
+    if map3DPlayer.lastSeq + 1 ~= seq then
+        return
+    end
+
+    -- 计算向量长度
+    local len = math.sqrt(
+        dirX * dirX +
+        dirY * dirY +
+        dirZ * dirZ);
+
+    if len > 0.0001 then
+        -- 服务器强制归一化
+        dirX = dirX / len
+        dirY = dirY / len
+        dirZ = dirZ / len
+    else
+        dirX = 0
+        dirY = 0
+        dirZ = 0
+    end
+
+    map3DPlayer.dir.x = dirX;
+    map3DPlayer.dir.y = dirY;
+    map3DPlayer.dir.z = dirZ;
+    map3DPlayer.lastSeq = seq;
+    map3DPlayer.lastClientTime = clientTime;
 end
 
 ---@param mapPlayer Map3DPlayerType

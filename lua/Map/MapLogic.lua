@@ -327,6 +327,10 @@ end
 ---@param userId string
 ---@return boolean
 function Map:PlayerJoinMap(playerId, userId)
+    if self.players[userId] ~= nil then
+        return false;
+    end
+
     Log:Error("NewPlayerJoinMap id %d playerId %s userId %s", self.MapDbData.id, playerId, userId)
 
     local spawnPoint = self:FindSpawnPoint();
