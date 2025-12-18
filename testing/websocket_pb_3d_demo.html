@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8" />
-    <title>3D 地图客户端 - WebSocket + Protobuf + Three.js</title>
+    <title>3D 地图客户端 - 第一人称视角</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <style>
         html,
@@ -66,6 +66,55 @@
             padding: 10px;
             font-size: 12px;
         }
+
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        #crosshair::before {
+            left: 50%;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            transform: translateX(-50%);
+        }
+
+        #crosshair::after {
+            top: 50%;
+            left: 0;
+            height: 2px;
+            width: 100%;
+            transform: translateY(-50%);
+        }
+
+        #pointer-lock-hint {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(5, 15, 30, .95);
+            border: 2px solid rgba(255, 255, 255, .2);
+            border-radius: 12px;
+            padding: 30px;
+            font-size: 16px;
+            text-align: center;
+            z-index: 999;
+            display: none;
+        }
     </style>
 </head>
 
@@ -82,11 +131,20 @@
     </div>
 
     <div id="controls-hint">
-        <strong>控制说明：</strong><br>
+        <strong>第一人称控制：</strong><br>
         W/S/A/D - 前后左右移动<br>
         Space - 上升 | Shift - 下降<br>
-        鼠标右键拖拽 - 旋转视角<br>
-        鼠标滚轮 - 缩放
+        鼠标移动 - 旋转视角<br>
+        ESC - 解锁鼠标<br>
+        <span style="color: #20c997;">点击画面锁定鼠标</span>
+    </div>
+
+    <div id="crosshair"></div>
+
+    <div id="pointer-lock-hint">
+        <div style="font-size: 24px; margin-bottom: 15px;">🎮</div>
+        <div>点击画面进入第一人称模式</div>
+        <div style="font-size: 12px; margin-top: 10px; opacity: 0.7;">按 ESC 退出</div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/protobufjs@7.2.5/dist/protobuf.min.js"></script>
@@ -162,7 +220,7 @@ message ProtoCSMap3DEnterRes{
                 new Date().toLocaleTimeString() + " " + a.join(" ") + "\n" + logEl.textContent;
         }
 
-        // ===================== Map State (提前声明) =====================
+        // ===================== Map State =====================
         const players = new Map();
         let selfId = null;
         let lastSeq = 0;
@@ -181,7 +239,7 @@ message ProtoCSMap3DEnterRes{
             ws.send(pkg);
         }
 
-        // ===================== WebSocket Handler (提前声明) =====================
+        // ===================== WebSocket Handler =====================
         function handlePkg(msg) {
             switch (msg.cmd) {
                 case Cmd.PROTO_CMD_CS_RES_LOGIN:
@@ -211,6 +269,7 @@ message ProtoCSMap3DEnterRes{
                     break;
                 case Cmd.PROTO_CMD_CS_MAP3D_ENTER_RES:
                     log("✓ 进入3D地图成功");
+                    showPointerLockHint();
                     break;
                 default:
                     log("未处理协议:", msg.cmd);
@@ -254,9 +313,10 @@ message ProtoCSMap3DEnterRes{
         // ===================== Three.js =====================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x050b16);
+        scene.fog = new THREE.Fog(0x050b16, 100, 500);
 
         const camera = new THREE.PerspectiveCamera(
-            75, window.innerWidth / window.innerHeight, 0.1, 5000
+            75, window.innerWidth / window.innerHeight, 0.1, 1000
         );
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -283,12 +343,10 @@ message ProtoCSMap3DEnterRes{
         ground.rotation.x = -Math.PI / 2;
         scene.add(ground);
 
-        // 相机控制参数
-        let cameraDistance = 50;
-        let cameraAngleH = 0; // 水平角度
-        let cameraAngleV = Math.PI / 6; // 垂直角度
-
-        camera.position.set(0, 30, 50);
+        // ===================== 第一人称相机控制 =====================
+        let yaw = 0;   // 水平旋转角度
+        let pitch = 0; // 垂直旋转角度
+        const EYE_HEIGHT = 1.6; // 眼睛高度（相对于玩家位置）
 
         // 窗口大小自适应
         window.addEventListener('resize', () => {
@@ -297,44 +355,35 @@ message ProtoCSMap3DEnterRes{
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // ===================== 简单的相机控制 =====================
-        let isDragging = false;
-        let lastMouseX = 0;
-        let lastMouseY = 0;
+        // ===================== 指针锁定 =====================
+        const pointerLockHint = document.getElementById('pointer-lock-hint');
 
-        renderer.domElement.addEventListener('mousedown', (e) => {
-            if (e.button === 2) { // 右键
-                isDragging = true;
-                lastMouseX = e.clientX;
-                lastMouseY = e.clientY;
-                e.preventDefault();
+        function showPointerLockHint() {
+            pointerLockHint.style.display = 'block';
+        }
+
+        renderer.domElement.addEventListener('click', () => {
+            renderer.domElement.requestPointerLock();
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement === renderer.domElement) {
+                pointerLockHint.style.display = 'none';
+                log("✓ 鼠标已锁定 - 第一人称模式");
+            } else {
+                log("鼠标已解锁");
             }
         });
 
-        renderer.domElement.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                const deltaX = e.clientX - lastMouseX;
-                const deltaY = e.clientY - lastMouseY;
+        document.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement === renderer.domElement) {
+                const sensitivity = 0.002;
+                yaw -= e.movementX * sensitivity;
+                pitch -= e.movementY * sensitivity;
 
-                cameraAngleH -= deltaX * 0.005;
-                cameraAngleV = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, cameraAngleV - deltaY * 0.005));
-
-                lastMouseX = e.clientX;
-                lastMouseY = e.clientY;
+                // 限制俯仰角度，防止翻转
+                pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
             }
-        });
-
-        renderer.domElement.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-
-        renderer.domElement.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-        });
-
-        renderer.domElement.addEventListener('wheel', (e) => {
-            cameraDistance = Math.max(10, Math.min(200, cameraDistance + e.deltaY * 0.1));
-            e.preventDefault();
         });
 
         // ===================== Player Mesh Creation =====================
@@ -355,6 +404,11 @@ message ProtoCSMap3DEnterRes{
             );
             m.add(line);
 
+            // 第一人称模式下，自己的模型设为不可见
+            if (isSelf) {
+                m.visible = false;
+            }
+
             scene.add(m);
             return m;
         }
@@ -370,24 +424,56 @@ message ProtoCSMap3DEnterRes{
         const SPEED = 2;
         setInterval(() => {
             if (!selfId) return;
-            let dx = 0, dy = 0, dz = 0;
 
-            // 修正方向映射：
-            // W/S 控制 Z 轴（前后）
-            // A/D 控制 X 轴（左右）
-            // Space/Shift 控制 Y 轴（上下）
-            if (key.w) dz -= SPEED;  // 前进
-            if (key.s) dz += SPEED;  // 后退
-            if (key.a) dx -= SPEED;  // 左移
-            if (key.d) dx += SPEED;  // 右移
-            if (key[" "]) dy += SPEED;     // 上升
-            if (key.shift) dy -= SPEED;    // 下降
+            let moveX = 0, moveY = 0, moveZ = 0;
 
-            // 始终发送输入（包括 0,0,0），让服务器知道当前状态
+            // 根据视角方向计算移动向量
+            const forward = new THREE.Vector3(
+                Math.sin(yaw),
+                0,
+                Math.cos(yaw)
+            );
+            const right = new THREE.Vector3(
+                Math.cos(yaw),
+                0,
+                -Math.sin(yaw)
+            );
+
+            // W/S - 前后移动（基于视角方向）
+            if (key.w) {
+                moveX += forward.x * SPEED;
+                moveZ += forward.z * SPEED;
+            }
+            if (key.s) {
+                moveX -= forward.x * SPEED;
+                moveZ -= forward.z * SPEED;
+            }
+
+            // A/D - 左右平移（基于视角方向）
+            if (key.a) {
+                moveX -= right.x * SPEED;
+                moveZ -= right.z * SPEED;
+            }
+            if (key.d) {
+                moveX += right.x * SPEED;
+                moveZ += right.z * SPEED;
+            }
+
+            // Space/Shift - 上下移动
+            if (key[" "]) moveY += SPEED;
+            if (key.shift) moveY -= SPEED;
+
+            // 发送移动指令到服务器
             lastSeq++;
             sendInner(
                 T_Input,
-                { dirX: dx, dirY: dy, dirZ: dz, seq: lastSeq, clientTime: Date.now() },
+                {
+                    dirX: Math.round(moveX),
+                    dirY: Math.round(moveY),
+                    dirZ: Math.round(moveZ),
+                    seq: lastSeq,
+                    clientTime: Date.now()
+                },
                 Cmd.PROTO_CMD_CS_REQ_MAP3D_INPUT
             );
         }, 80);
@@ -398,20 +484,24 @@ message ProtoCSMap3DEnterRes{
 
             const self = players.get(selfId);
             if (self) {
-                // 计算相机位置（围绕玩家旋转）
-                const camX = self.position.x + Math.sin(cameraAngleH) * Math.cos(cameraAngleV) * cameraDistance;
-                const camY = self.position.y + Math.sin(cameraAngleV) * cameraDistance;
-                const camZ = self.position.z + Math.cos(cameraAngleH) * Math.cos(cameraAngleV) * cameraDistance;
+                // 第一人称：相机位置在玩家头部
+                camera.position.set(
+                    self.position.x,
+                    self.position.y + EYE_HEIGHT,
+                    self.position.z
+                );
 
-                camera.position.set(camX, camY, camZ);
-                camera.lookAt(self.position);
+                // 根据 yaw 和 pitch 设置相机朝向
+                camera.rotation.order = 'YXZ';
+                camera.rotation.y = yaw;
+                camera.rotation.x = pitch;
             }
 
             renderer.render(scene, camera);
         }
         animate();
 
-        log("✓ 3D 场景已初始化");
+        log("✓ 3D 场景已初始化（第一人称模式）");
         log("请依次点击: 连接 → 登录 → 进入3D地图");
     </script>
 
