@@ -2,13 +2,7 @@
 
 ## 如何构建
 
-* copy_avant2mapsvr.sh
-* copy_avant_bin.sh
-* copy_mapsvr2avant.sh 
-
-将上面 avant 项目路径改为自己的
-
-执行 copy_mapsvr2avant.sh 将 MapSvr 项目 protocol 和 src/app 拷贝到 avant 项目里，去 avant 项目 build 出可执行文件，再用 copy_avant_bin.sh 将可执行文件拷到 MapSvr 里。
+请参考 Dockerfile 镜像构建过程。
 
 ## 配置文件
 

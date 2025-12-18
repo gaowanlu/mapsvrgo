@@ -1,0 +1,33 @@
+name: Docker Image CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+env:
+  IMAGE: gaowanlu/mapsvrgo
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v3
+      
+    - name: create tag
+      run: |
+          SHA=${{ github.sha }}
+          TAG=${IMAGE}:$(TZ=UTC-9 date '+%Y%m')-${SHA:0:7}
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            TAG="${IMAGE}:latest"
+          fi
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo TAG $TAG 
+
+    - name: build docker image
+      run: |
+        docker build . -t ${{ env.TAG }}

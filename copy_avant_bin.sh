@@ -1,3 +1,3 @@
-DEV_AVANT_PATH="/mnt/f/dev_dir/avant"
+DEV_AVANT_PATH="./avant_dir"
 
 cp "$DEV_AVANT_PATH/bin/avant" ./
