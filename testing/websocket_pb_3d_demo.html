@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <title>3D 地图客户端 - WebSocket + Protobuf + Three.js</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+            background: #050b16;
+            color: #e6edf3;
+            font-family: system-ui, -apple-system, "Microsoft YaHei";
+        }
+
+        #ui {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            width: 300px;
+            background: rgba(5, 15, 30, .85);
+            border: 1px solid rgba(255, 255, 255, .08);
+            border-radius: 8px;
+            padding: 10px;
+            z-index: 100;
+        }
+
+        input,
+        button {
+            width: 100%;
+            margin-top: 6px;
+            padding: 6px;
+            background: #0b1a2c;
+            border: 1px solid rgba(255, 255, 255, .08);
+            color: #e6edf3;
+            border-radius: 6px;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0f2540;
+        }
+
+        pre {
+            margin-top: 8px;
+            font-size: 11px;
+            max-height: 160px;
+            overflow: auto;
+            background: #020814;
+            padding: 6px;
+        }
+
+        #controls-hint {
+            position: fixed;
+            bottom: 12px;
+            left: 12px;
+            background: rgba(5, 15, 30, .85);
+            border: 1px solid rgba(255, 255, 255, .08);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="ui">
+        <input id="wsUrl" value="ws://www.mfavant.xyz:20025">
+        <input id="userId" value="1">
+        <input id="password" value="1">
+        <button id="btnConnect">连接</button>
+        <button id="btnLogin">登录</button>
+        <button id="btnEnter">进入3D地图</button>
+        <pre id="log">未连接</pre>
+    </div>
+
+    <div id="controls-hint">
+        <strong>控制说明：</strong><br>
+        W/S/A/D - 前后左右移动<br>
+        Space - 上升 | Shift - 下降<br>
+        鼠标右键拖拽 - 旋转视角<br>
+        鼠标滚轮 - 缩放
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/protobufjs@7.2.5/dist/protobuf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js"></script>
+
+    <script>
+        // ===================== Proto =====================
+        const protoText = `
+syntax="proto3";
+package avant;
+enum ProtoCmd{
+    PROTO_CMD_CS_REQ_LOGIN = 2001;
+    PROTO_CMD_CS_RES_LOGIN = 2002;
+    PROTO_CMD_CS_MAP3D_NOTIFY_INIT_DATA = 2012;
+    PROTO_CMD_CS_REQ_MAP3D_INPUT = 2015;
+    PROTO_CMD_CS_MAP3D_NOTIFY_STATE_DATA = 2016;
+    PROTO_CMD_CS_MAP3D_ENTER_REQ = 2017;
+    PROTO_CMD_CS_MAP3D_ENTER_RES = 2018;
+}
+message ProtoPackage{
+  ProtoCmd cmd=1;
+  bytes protocol=2;
+}
+message ProtoCSReqLogin{
+  string userId=1;
+  string password=2;
+}
+message ProtoCSMap3DNotifyInitData{
+  string userId=1;
+  int32 x=2;
+  int32 y=3;
+  int32 z=10;
+}
+message ProtoCSReqMap3DInput{
+  int32 dirX=1;
+  int32 dirY=2;
+  int32 dirZ=3;
+  uint32 seq=4;
+  uint64 clientTime=5;
+}
+message ProtoMap3DPlayerPayload{
+  string userId=1;
+  int32 x=2;
+  int32 y=3;
+  int32 z=4;
+  uint32 lastSeq=8;
+}
+message ProtoCSMap3DNotifyStateData{
+  repeated ProtoMap3DPlayerPayload players=2;
+}
+message ProtoCSMap3DEnterReq{
+  uint32 mapId=1;
+}
+message ProtoCSMap3DEnterRes{
+  int32 ret=1;
+  uint32 mapId=2;
+}
+`;
+
+        const root = protobuf.parse(protoText).root;
+        const ProtoPackage = root.lookupType("avant.ProtoPackage");
+        const Cmd = root.lookupEnum("avant.ProtoCmd").values;
+        const T_Login = root.lookupType("avant.ProtoCSReqLogin");
+        const T_Init = root.lookupType("avant.ProtoCSMap3DNotifyInitData");
+        const T_State = root.lookupType("avant.ProtoCSMap3DNotifyStateData");
+        const T_Input = root.lookupType("avant.ProtoCSReqMap3DInput");
+        const T_Enter = root.lookupType("avant.ProtoCSMap3DEnterReq");
+
+        // ===================== UI / Log =====================
+        const logEl = document.getElementById("log");
+        function log(...a) {
+            logEl.textContent =
+                new Date().toLocaleTimeString() + " " + a.join(" ") + "\n" + logEl.textContent;
+        }
+
+        // ===================== Map State (提前声明) =====================
+        const players = new Map();
+        let selfId = null;
+        let lastSeq = 0;
+
+        // ===================== WebSocket =====================
+        let ws = null;
+        function sendInner(type, obj, cmd) {
+            if (!ws || ws.readyState !== 1) {
+                log("WebSocket 未连接");
+                return;
+            }
+            const inner = type.encode(type.create(obj)).finish();
+            const pkg = ProtoPackage.encode(
+                ProtoPackage.create({ cmd, protocol: inner })
+            ).finish();
+            ws.send(pkg);
+        }
+
+        // ===================== WebSocket Handler (提前声明) =====================
+        function handlePkg(msg) {
+            switch (msg.cmd) {
+                case Cmd.PROTO_CMD_CS_RES_LOGIN:
+                    log("✓ 登录成功");
+                    break;
+                case Cmd.PROTO_CMD_CS_MAP3D_NOTIFY_INIT_DATA:
+                    const initData = T_Init.decode(msg.protocol);
+                    selfId = initData.userId;
+                    if (!players.has(selfId)) {
+                        const mesh = createPlayerMesh(true);
+                        mesh.position.set(initData.x, initData.y, initData.z);
+                        players.set(selfId, mesh);
+                    }
+                    log("✓ 初始化玩家:", selfId, `位置:(${initData.x},${initData.y},${initData.z})`);
+                    break;
+                case Cmd.PROTO_CMD_CS_MAP3D_NOTIFY_STATE_DATA:
+                    const stateData = T_State.decode(msg.protocol);
+                    stateData.players.forEach(p => {
+                        let m = players.get(p.userId);
+                        if (!m) {
+                            m = createPlayerMesh(p.userId === selfId);
+                            players.set(p.userId, m);
+                            log("新玩家加入:", p.userId);
+                        }
+                        m.position.set(p.x, p.y, p.z);
+                    });
+                    break;
+                case Cmd.PROTO_CMD_CS_MAP3D_ENTER_RES:
+                    log("✓ 进入3D地图成功");
+                    break;
+                default:
+                    log("未处理协议:", msg.cmd);
+            }
+        }
+
+        document.getElementById("btnConnect").onclick = () => {
+            if (ws && ws.readyState === 1) {
+                log("已经连接");
+                return;
+            }
+            ws = new WebSocket(document.getElementById("wsUrl").value);
+            ws.binaryType = "arraybuffer";
+            ws.onopen = () => log("✓ WS 已连接");
+            ws.onclose = () => log("✗ WS 断开");
+            ws.onerror = (e) => log("✗ WS 错误");
+            ws.onmessage = ev => {
+                const msg = ProtoPackage.decode(new Uint8Array(ev.data));
+                handlePkg(msg);
+            };
+        };
+
+        document.getElementById("btnLogin").onclick = () => {
+            sendInner(
+                T_Login,
+                { userId: document.getElementById("userId").value, password: document.getElementById("password").value },
+                Cmd.PROTO_CMD_CS_REQ_LOGIN
+            );
+            log("发送登录请求");
+        };
+
+        document.getElementById("btnEnter").onclick = () => {
+            sendInner(
+                T_Enter,
+                { mapId: 4 },
+                Cmd.PROTO_CMD_CS_MAP3D_ENTER_REQ
+            );
+            log("请求进入地图");
+        };
+
+        // ===================== Three.js =====================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050b16);
+
+        const camera = new THREE.PerspectiveCamera(
+            75, window.innerWidth / window.innerHeight, 0.1, 5000
+        );
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // 添加网格辅助线
+        const gridHelper = new THREE.GridHelper(2000, 100, 0x1a3a5c, 0x0f243f);
+        scene.add(gridHelper);
+
+        // 添加坐标轴辅助线
+        const axesHelper = new THREE.AxesHelper(50);
+        scene.add(axesHelper);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const dl = new THREE.DirectionalLight(0xffffff, 0.6);
+        dl.position.set(50, 50, 100);
+        scene.add(dl);
+
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(2000, 2000),
+            new THREE.MeshStandardMaterial({ color: 0x0f243f, transparent: true, opacity: 0.3 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+
+        // 相机控制参数
+        let cameraDistance = 50;
+        let cameraAngleH = 0; // 水平角度
+        let cameraAngleV = Math.PI / 6; // 垂直角度
+
+        camera.position.set(0, 30, 50);
+
+        // 窗口大小自适应
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // ===================== 简单的相机控制 =====================
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            if (e.button === 2) { // 右键
+                isDragging = true;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                e.preventDefault();
+            }
+        });
+
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaX = e.clientX - lastMouseX;
+                const deltaY = e.clientY - lastMouseY;
+
+                cameraAngleH -= deltaX * 0.005;
+                cameraAngleV = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, cameraAngleV - deltaY * 0.005));
+
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            }
+        });
+
+        renderer.domElement.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        renderer.domElement.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+
+        renderer.domElement.addEventListener('wheel', (e) => {
+            cameraDistance = Math.max(10, Math.min(200, cameraDistance + e.deltaY * 0.1));
+            e.preventDefault();
+        });
+
+        // ===================== Player Mesh Creation =====================
+        function createPlayerMesh(isSelf) {
+            const geometry = new THREE.BoxGeometry(2, 2, 2);
+            const material = new THREE.MeshStandardMaterial({
+                color: isSelf ? 0x20c997 : 0x3aa0ff,
+                emissive: isSelf ? 0x0a4d3a : 0x1a5080,
+                emissiveIntensity: 0.3
+            });
+            const m = new THREE.Mesh(geometry, material);
+
+            // 添加边框
+            const edges = new THREE.EdgesGeometry(geometry);
+            const line = new THREE.LineSegments(
+                edges,
+                new THREE.LineBasicMaterial({ color: isSelf ? 0x40ffbf : 0x60c0ff })
+            );
+            m.add(line);
+
+            scene.add(m);
+            return m;
+        }
+
+        // ===================== Input =====================
+        const key = {};
+        window.addEventListener("keydown", e => {
+            key[e.key.toLowerCase()] = true;
+            if (e.key === ' ') e.preventDefault();
+        });
+        window.addEventListener("keyup", e => key[e.key.toLowerCase()] = false);
+
+        const SPEED = 2;
+        setInterval(() => {
+            if (!selfId) return;
+            let dx = 0, dy = 0, dz = 0;
+
+            // 修正方向映射：
+            // W/S 控制 Z 轴（前后）
+            // A/D 控制 X 轴（左右）
+            // Space/Shift 控制 Y 轴（上下）
+            if (key.w) dz -= SPEED;  // 前进
+            if (key.s) dz += SPEED;  // 后退
+            if (key.a) dx -= SPEED;  // 左移
+            if (key.d) dx += SPEED;  // 右移
+            if (key[" "]) dy += SPEED;     // 上升
+            if (key.shift) dy -= SPEED;    // 下降
+
+            // 始终发送输入（包括 0,0,0），让服务器知道当前状态
+            lastSeq++;
+            sendInner(
+                T_Input,
+                { dirX: dx, dirY: dy, dirZ: dz, seq: lastSeq, clientTime: Date.now() },
+                Cmd.PROTO_CMD_CS_REQ_MAP3D_INPUT
+            );
+        }, 80);
+
+        // ===================== Render Loop =====================
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const self = players.get(selfId);
+            if (self) {
+                // 计算相机位置（围绕玩家旋转）
+                const camX = self.position.x + Math.sin(cameraAngleH) * Math.cos(cameraAngleV) * cameraDistance;
+                const camY = self.position.y + Math.sin(cameraAngleV) * cameraDistance;
+                const camZ = self.position.z + Math.cos(cameraAngleH) * Math.cos(cameraAngleV) * cameraDistance;
+
+                camera.position.set(camX, camY, camZ);
+                camera.lookAt(self.position);
+            }
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        log("✓ 3D 场景已初始化");
+        log("请依次点击: 连接 → 登录 → 进入3D地图");
+    </script>
+
+</body>
+
+</html>

@@ -18,13 +18,18 @@
 
 ---@class Map3DPlayerType
 ---@field userId string 用户ID
----@field pos Vec3i 位置坐标
----@field v Vec3i 速度
+---@field pos Vec3f 位置坐标
+---@field v Vec3f 速度
 ---@field gravity integer 重力
 ---@field weight integer 重量
 ---@field lastSeq integer 最后收到并应用的客户端输入seq
 ---@field lastClientTime number 客户端发送该seq时的客户端时间(ms)
 ---@field dir Vec3f 方向
+---@field speedRatio number 速度放大比例
+---@field maxSpeed number 目标最大速度 px/ms
+---@field accel number 加速度 px/ms^2
+---@field friction number 每帧速度衰减系数
+---@field bodyRadius number 角色碰撞半径
 
 ---@class Map3DType
 ---@field MapDbData Map3DDbDataType
@@ -101,7 +106,7 @@ function Map3D:OnTick()
 end
 
 ---计算出生点
----@return Vec3i
+---@return Vec3f
 function Map3D:FindSpawnPoint()
     local x = self.MapDbData.size.x // 2;
     local y = 0;
@@ -135,6 +140,11 @@ function Map3D:PlayerJoinMap(playerId, userId)
         lastSeq = 0,
         lastClientTime = 0,
         dir = { x = 0, y = 0, z = 0 },
+        speedRatio = 1000,
+        maxSpeed = 0.1, -- 最大速度 目标最大速度 px/ms 100px/s
+        accel = 1,      -- 加速度 px/ms^2
+        friction = 1.0, -- 无摩擦
+        bodyRadius = 12,
     };
 
     self.players[userId] = newMap3DPlayer;
@@ -212,18 +222,131 @@ end
 
 ---@param mapPlayer Map3DPlayerType
 function Map3D:PlayerPhysicsMove(mapPlayer)
+    --- 返回v的符号(1,-1,0)
+    ---@return number
+    local function sign(v)
+        if v > 0 then
+            return 1;
+        elseif v < 0 then
+            return -1;
+        else
+            return 0;
+        end
+    end
 
+    -- 计算目标速度（由方向输入 dirX、dirY、dirZ 和 最大速度 maxSpeed 决定）
+    -- 目标的X、Y、Z速度
+    local targetVx = (mapPlayer.dir.x * mapPlayer.speedRatio) * mapPlayer.maxSpeed;
+    local targetVy = (mapPlayer.dir.y * mapPlayer.speedRatio) * mapPlayer.maxSpeed;
+    local targetVz = (mapPlayer.dir.z * mapPlayer.speedRatio) * mapPlayer.maxSpeed;
+
+    targetVx = math.floor(targetVx);
+    targetVy = math.floor(targetVy);
+    targetVz = math.floor(targetVz);
+
+    -- 当前速度到目标速度的差值
+    local deltaVx = targetVx - mapPlayer.v.x -- 当前vX需要朝哪个方向变化
+    local deltaVy = targetVy - mapPlayer.v.y -- 当前vY需要朝哪个方向变化
+    local deltaVz = targetVz - mapPlayer.v.z -- 当前vZ需要朝哪个方向变化
+
+    -- 每帧最大可改变的速度（加速度限制）
+    -- accel * DT = 每帧最多加多少速度
+    local maxDeltaV = mapPlayer.accel * self:GetMapDbData().DT_MS
+    maxDeltaV = math.floor(maxDeltaV);
+
+    local maxDeltaVX = math.abs(math.floor(maxDeltaV * mapPlayer.dir.x));
+    local maxDeltaVY = math.abs(math.floor(maxDeltaV * mapPlayer.dir.y));
+    local maxDeltaVZ = math.abs(math.floor(maxDeltaV * mapPlayer.dir.z));
+
+    -- X轴速度更新（带加速度限制）
+    if maxDeltaVX ~= 0 and math.abs(deltaVx) > maxDeltaVX then
+        -- 需要加速，按符号方向增加 maxDeltaV
+        mapPlayer.v.x = mapPlayer.v.x + sign(deltaVx) * maxDeltaVX;
+    else
+        -- 可以直接到达目标速度
+        mapPlayer.v.x = targetVx;
+    end
+
+    -- Y轴速度更新（加速度限制）
+    if maxDeltaVY ~= 0 and math.abs(deltaVy) > maxDeltaVY then
+        mapPlayer.v.y = mapPlayer.v.y + sign(deltaVy) * maxDeltaVY;
+    else
+        mapPlayer.v.y = targetVy;
+    end
+
+    -- Z轴速度更新（加速度限制）
+    if maxDeltaVZ ~= 0 and math.abs(deltaVz) > maxDeltaVZ then
+        mapPlayer.v.z = mapPlayer.v.z + sign(deltaVz) * maxDeltaVZ;
+    else
+        mapPlayer.v.z = targetVz;
+    end
+
+    -- 根据速度移动位置
+    -- mapPlayer.pos.x / mapPlayer.pos.y / mapPlayer.pos.z 是坐标，速度 * DT_MS 是位移
+    mapPlayer.pos.x = mapPlayer.pos.x + math.floor((mapPlayer.v.x * self:GetMapDbData().DT_MS) / mapPlayer.speedRatio);
+    mapPlayer.pos.y = mapPlayer.pos.y + math.floor((mapPlayer.v.y * self:GetMapDbData().DT_MS) / mapPlayer.speedRatio);
+    mapPlayer.pos.z = mapPlayer.pos.z + math.floor((mapPlayer.v.z * self:GetMapDbData().DT_MS) / mapPlayer.speedRatio);
+
+    -- 摩擦力（阻尼）
+    -- 每帧速度*=friction,使速度逐渐衰减
+    mapPlayer.v.x = math.floor(mapPlayer.v.x * mapPlayer.friction)
+    mapPlayer.v.y = math.floor(mapPlayer.v.y * mapPlayer.friction)
+    mapPlayer.v.z = math.floor(mapPlayer.v.z * mapPlayer.friction)
+
+    -- 地图边界控制，限制物体不允许跑出地图
+    local mapSize = self:GetSize();
+    local playerRadius = mapPlayer.bodyRadius;                                                        -- 玩家半径（防止部分穿出）
+
+    if mapPlayer.pos.x < playerRadius then mapPlayer.pos.x = playerRadius end                         -- 左边界
+    if mapPlayer.pos.y < playerRadius then mapPlayer.pos.y = playerRadius end                         -- 上边界
+    if mapPlayer.pos.z < playerRadius then mapPlayer.pos.z = playerRadius end                         -- 前边界
+    if mapPlayer.pos.x > mapSize.x - playerRadius then mapPlayer.pos.x = mapSize.x - playerRadius end -- 右边界
+    if mapPlayer.pos.y > mapSize.y - playerRadius then mapPlayer.pos.y = mapSize.y - playerRadius end -- 下边界
+    if mapPlayer.pos.z > mapSize.z - playerRadius then mapPlayer.pos.z = mapSize.z - playerRadius end -- 后边界
 end
 
 ---@param timeMS number
 function Map3D:FixedUpdate(timeMS)
-    --Log:Error("Map3D:FixedUpdate mapId %s", tostring(self.MapDbData.id));
+    local MsgHandler = require("MsgHandlerLogic")
+    local PlayerMgr = require("PlayerMgrLogic")
+
+    -- Log:Error("Map3D:FixedUpdate mapId %s", tostring(self.MapDbData.id));
     for userId, mapPlayer in pairs(self.players) do
         self:PlayerPhysicsMove(mapPlayer);
     end
 
-    -- 同步数据
-    -- PROTO_CMD_CS_MAP3D_NOTIFY_STATE_DATA
+    -- 为地图中每个玩家同步状态 PROTO_CMD_CS_MAP3D_NOTIFY_STATE_DATA
+    local playersPayload = {}
+    for userId, mapPlayer in pairs(self.players) do
+        playersPayload[#playersPayload + 1] = {
+            userId = mapPlayer.userId,
+            x = math.tointeger(mapPlayer.pos.x),
+            y = math.tointeger(mapPlayer.pos.y),
+            z = math.tointeger(mapPlayer.pos.z),
+            vX = math.tointeger(mapPlayer.v.x),
+            vY = math.tointeger(mapPlayer.v.y),
+            vZ = math.tointeger(mapPlayer.v.z),
+            lastSeq = math.tointeger(mapPlayer.lastSeq),
+            lastClientTime = math.tointeger(mapPlayer.lastClientTime)
+        };
+    end
+
+    -- if #playersPayload == 0 then
+    --     Log:Error('players playersPayload len %d', #playersPayload)
+    -- end
+
+    local protoCSMap3DNotifyStateData = {
+        serverTime = timeMS,
+        players = playersPayload
+    };
+
+    for userId, mapPlayer in pairs(self.players) do
+        local loopPlayer = PlayerMgr.GetPlayerByUserId(userId)
+        if loopPlayer ~= nil then
+            MsgHandler:Send2Client(loopPlayer:GetClientGID(), loopPlayer:GetWorkerIdx(),
+                MsgHandler.ProtoCmd.PROTO_CMD_CS_MAP3D_NOTIFY_STATE_DATA, protoCSMap3DNotifyStateData);
+        end
+    end
 end
 
 return Map3D;
