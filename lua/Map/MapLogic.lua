@@ -57,7 +57,7 @@ local TimeMgr  = require("TimeMgrLogic")
 ---@class QuadTree:QuadTreeType
 local QuadTree = {
     MAX_DEPTH = 6,   -- 最大分裂深度，超过该深度不再继续分裂，防止无限分类
-    MAX_OBJECTS = 10 -- 当节点对象数量超过该阈值时尝试分裂
+    MAX_OBJECTS = 0 -- 当节点对象数量超过该阈值时尝试分裂
 };
 
 ---@param x number 节点左上角坐标x
@@ -81,7 +81,7 @@ end
 
 --- 判断对象obj是否完全包含在候选节点qtNode的矩形范围内
 ---@param qtNode QuadTree
----@param obj table
+---@param obj table -- {x, y}
 ---@return boolean
 function QuadTree.ContainsNode(qtNode, obj)
     return (

@@ -218,6 +218,9 @@ message ProtoCSMap3DEnterRes{
         function log(...a) {
             logEl.textContent =
                 new Date().toLocaleTimeString() + " " + a.join(" ") + "\n" + logEl.textContent;
+            if (logEl.textContent.length > 3000) {
+                logEl.textContent = "";
+            }
         }
 
         // ===================== Map State =====================
@@ -257,6 +260,8 @@ message ProtoCSMap3DEnterRes{
                     break;
                 case Cmd.PROTO_CMD_CS_MAP3D_NOTIFY_STATE_DATA:
                     const stateData = T_State.decode(msg.protocol);
+                    log(`AOI玩家个数 ${stateData.players.length}`);
+                    let playersPos = "";
                     stateData.players.forEach(p => {
                         let m = players.get(p.userId);
                         if (!m) {
@@ -265,7 +270,9 @@ message ProtoCSMap3DEnterRes{
                             log("新玩家加入:", p.userId);
                         }
                         m.position.set(p.x, p.y, p.z);
+                        playersPos += `{${p.x},${p.y},${p.z}}`;
                     });
+                    log(playersPos);
                     break;
                 case Cmd.PROTO_CMD_CS_MAP3D_ENTER_RES:
                     log("✓ 进入3D地图成功");
