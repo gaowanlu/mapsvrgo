@@ -151,7 +151,7 @@ function createCSMapEnterReqPackage(mapId: number): Buffer {
 
 function createCSMapLeaveReqPackage(): Buffer {
     const csMapLeaveReq: ProtoCSMapLeaveReq = {
-        reserved: 0
+        nothing: 0
     };
 
     const reqPackage: ProtoPackage = {
