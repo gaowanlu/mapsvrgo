@@ -24,10 +24,10 @@ mkdir -p bin
 
 # 编译 Go 项目
 echo "🚧 构建 Go 项目..."
-go build -o bin/mapsvrgo
+go build -o bin/dbsvrgo
 
 if [ $? -eq 0 ]; then
-    echo "✅ 构建成功，输出文件: bin/mapsvrgo"
+    echo "✅ 构建成功，输出文件: bin/dbsvrgo"
 else
     echo "❌ 构建失败"
     exit 1

@@ -6,6 +6,7 @@
 #include "proto/proto_util.h"
 #include "proto_res/proto_lua.pb.h"
 #include "proto_res/proto_example.pb.h"
+#include "proto_res/proto_database.pb.h"
 #include "utility/singleton.h"
 #include "global/tunnel_id.h"
 #include "app/other_app.h"

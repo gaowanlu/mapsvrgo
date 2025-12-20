@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package avant;
+
+option go_package = "/proto_res";
+
+enum DbOpType{
+    OP_INSERT = 0;
+    OP_REPLACE = 1;
+    OP_UPDATE = 2;
+    OP_DELETE = 3;
+}
+
+message DbPlayerBaseInfo{
+    int32 level = 1;
+}
+
+message DbUserRecord{
+    DbOpType op = 1;
+    int64 id = 2;
+    string userId = 3;
+    string password = 4;
+    DbPlayerBaseInfo baseInfo = 5;
+}
