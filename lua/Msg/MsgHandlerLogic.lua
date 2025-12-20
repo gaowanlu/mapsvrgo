@@ -50,6 +50,8 @@ MsgHandler.ProtoCmd = {
     PROTO_CMD_CS_MAP3D_ENTER_RES = 2018,
     PROTO_CMD_CS_MAP3D_LEAVE_REQ = 2019,
     PROTO_CMD_CS_MAP3D_LEAVE_RES = 2020,
+
+    PROTO_CMD_DBSVRGO_WRITE_DBUSERRECORD_REQ = 3000,
 };
 
 function MsgHandler:DebugTableToString(t, indent)
@@ -212,6 +214,17 @@ MsgHandler.MsgFromClientCmd2Func = {
             Log:Error("UserId[%s] already logged in", userConfig.userId)
             return
         end
+
+        -- 测试发向dbsvrgo
+        MsgHandler:Send2IPC("1.1.2.1", MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_WRITE_DBUSERRECORD_REQ, {
+            op = 1,
+            id = 1,
+            userId = userConfig.userId,
+            password = userConfig.password,
+            baseInfo = {
+                level = math.random(0, 100)
+            }
+        });
 
         -- 创建玩家对象
         local createPlayer = PlayerMgr.CreatePlayer(playerId)

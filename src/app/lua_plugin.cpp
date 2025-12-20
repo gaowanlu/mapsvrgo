@@ -1157,6 +1157,39 @@ void lua_plugin::lua2protobuf_nostack(lua_State *L, const google::protobuf::Mess
                 lua_pop(L, 1); // field_val
                 break;
             }
+            case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+            {
+                if (field->is_repeated())
+                {
+                    if (!lua_istable(L, -1))
+                    {
+                        LOG_FATAL("Proto目标类型为 数组 lua值非table in %s", this_loop_key.c_str());
+                        lua_pop(L, 1); // field_val
+                        break;
+                    }
+                    const int n_in_array = lua_rawlen(L, -1);
+                    for (int arr_idx = 1; arr_idx <= n_in_array; ++arr_idx)
+                    {
+                        lua_rawgeti(L, -1, arr_idx);
+                        if (lua_isinteger(L, -1))
+                        {
+                            LOG_LUA_PLUGIN_RUNTIME("%u", lua_tointeger(L, -1));
+                            reflection->AddEnumValue(frame.package_ptr, field, lua_tointeger(L, -1));
+                        }
+                        lua_pop(L, 1);
+                    }
+                }
+                else
+                {
+                    if (lua_isinteger(L, -1))
+                    {
+                        LOG_LUA_PLUGIN_RUNTIME("%u", lua_tointeger(L, -1));
+                        reflection->SetEnumValue(frame.package_ptr, field, lua_tointeger(L, -1));
+                    }
+                }
+                lua_pop(L, 1); // field_val
+                break;
+            }
             case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
             {
                 // 无论如何lua栈顶都应该是Message
@@ -1401,6 +1434,14 @@ void lua_plugin::protobuf2lua_nostack(lua_State *L, const google::protobuf::Mess
                 lua_settable(L, -3);
                 break;
             }
+            case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+            {
+                google::protobuf::uint32 val = reflection->GetEnumValue(*frame.package_ptr, field);
+                LOG_LUA_PLUGIN_RUNTIME("Proto2Lua %s:%u", field->name().c_str(), val);
+                lua_pushinteger(L, val);
+                lua_settable(L, -3);
+                break;
+            }
             case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
             {
                 StackFrame new_frame;
@@ -1532,6 +1573,15 @@ void lua_plugin::protobuf2lua_nostack(lua_State *L, const google::protobuf::Mess
                     frame.repeated_loop_idx++;
                     break;
                 }
+                case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+                {
+                    google::protobuf::uint32 val = reflection->GetRepeatedEnumValue(*frame.package_ptr, field, frame.repeated_loop_idx);
+                    LOG_LUA_PLUGIN_RUNTIME("Proto2Lua %s[%d]:%u", field->name().c_str(), frame.repeated_loop_idx, val);
+                    lua_pushinteger(L, val);
+                    lua_settable(L, -3);
+                    frame.repeated_loop_idx++;
+                    break;
+                }
                 case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
                 {
                     LOG_LUA_PLUGIN_RUNTIME("数组元素类型为 Message");
@@ -1634,4 +1684,6 @@ void lua_plugin::init_message_factory()
     REGISTER_MSG(ProtoCmd::PROTO_CMD_CS_MAP3D_ENTER_RES, ProtoCSMap3DEnterRes);
     REGISTER_MSG(ProtoCmd::PROTO_CMD_CS_MAP3D_LEAVE_REQ, ProtoCSMap3DLeaveReq);
     REGISTER_MSG(ProtoCmd::PROTO_CMD_CS_MAP3D_LEAVE_RES, ProtoCSMap3DLeaveRes);
+
+    REGISTER_MSG(ProtoCmd::PROTO_CMD_DBSVRGO_WRITE_DBUSERRECORD_REQ, DbUserRecord);
 }

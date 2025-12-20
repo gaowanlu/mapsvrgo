@@ -30,8 +30,24 @@ func (w *Worker) Start() {
 				log.Println("build sql error:", err)
 				continue
 			}
-			if _, err := db.DB.Exec(sqlStr, args...); err != nil {
+
+			result, err := db.DB.Exec(sqlStr, args...)
+			if err != nil {
 				log.Println("exec error:", err, sqlStr)
+				continue
+			}
+
+			// 受影响的行数
+			rows, err := result.RowsAffected()
+			if err != nil {
+				log.Println("RowsAffected error:", err)
+			} else {
+				log.Println("Rows affected:", rows)
+			}
+
+			// 如果是 INSERT，可获取自增 ID
+			if id, err := result.LastInsertId(); err == nil {
+				log.Println("Last insert id:", id)
 			}
 		}
 	}()
