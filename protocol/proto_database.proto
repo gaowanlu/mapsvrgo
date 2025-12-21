@@ -22,3 +22,11 @@ message DbUserRecord{
     string password = 4;
     DbPlayerBaseInfo baseInfo = 5;
 }
+
+message SelectDbUserRecordReq{
+    string where = 1;
+}
+
+message SelectDbUserRecordRes{
+    repeated DbUserRecord userRecordList = 1;
+}

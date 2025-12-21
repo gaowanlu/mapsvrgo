@@ -31,6 +31,7 @@ func main() {
 			}
 			return client.Send(proto_res.ProtoCmd_PROTO_CMD_CS_REQ_EXAMPLE, msg)
 		},
+
 		func(client *client.Client, pkg *proto_res.ProtoPackage) error {
 			log.Println("RPC 收到包 CMD =", pkg.Cmd)
 
@@ -67,6 +68,32 @@ func main() {
 				} else {
 					log.Println(prototext.Format(&msg))
 					w.Push(&msg)
+				}
+
+			case proto_res.ProtoCmd_PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_REQ:
+				var msg proto_res.SelectDbUserRecordReq
+				if err := proto.Unmarshal(pkg.Protocol, &msg); err != nil {
+					log.Println("解析失败:", err)
+				} else {
+					log.Println(prototext.Format(&msg))
+					res, err := w.SelectRaw(
+						&proto_res.DbUserRecord{},
+						msg.Where,
+					)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					res_msg := &proto_res.SelectDbUserRecordRes{}
+
+					for _, m := range res {
+						u := m.(*proto_res.DbUserRecord)
+						res_msg.UserRecordList = append(res_msg.UserRecordList, u)
+					}
+
+					log.Println(prototext.Format(res_msg))
+
+					client.Send(proto_res.ProtoCmd_PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_RES, res_msg)
 				}
 
 			default:

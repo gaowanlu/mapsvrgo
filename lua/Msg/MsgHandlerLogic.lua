@@ -52,6 +52,8 @@ MsgHandler.ProtoCmd = {
     PROTO_CMD_CS_MAP3D_LEAVE_RES = 2020,
 
     PROTO_CMD_DBSVRGO_WRITE_DBUSERRECORD_REQ = 3000,
+    PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_REQ = 3001,
+    PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_RES = 3002,
 };
 
 function MsgHandler:DebugTableToString(t, indent)
@@ -149,6 +151,15 @@ MsgHandler.MsgFromClientCmd2Func = {
         if player ~= nil then
             player:OnLogout()
             PlayerMgr.RemovePlayerByPlayerId(playerId)
+
+            -- dbsvrgo测试
+            local numberUserId = tonumber(player:GetUserId());
+            if numberUserId ~= nil then
+                -- 注意防止SQL注入
+                MsgHandler:Send2IPC("1.1.2.1", MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_REQ, {
+                    where = string.format("userId=%s limit 1", tostring(numberUserId)),
+                });
+            end
         else
             -- Log:Error("Player does not exist for gid[%d] workerIdx[%d]", clientGID, workerIdx)
         end
@@ -378,6 +389,15 @@ function MsgHandler:HandlerMsgFromOther(cmd, message, app_id)
             }
             -- 原逻辑是 Send2IPC 但发送的是 message，而不是 t
             self:Send2IPC(app_id, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, message)
+        end,
+
+        [MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_RES] = function()
+            local Debug = require("DebugLogic");
+
+            local str = Debug:DebugTableToString(message)
+            if str ~= nil then
+                Log:Error("%s", str);
+            end
         end
     }
 
