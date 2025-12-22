@@ -1,5 +1,7 @@
 # MapSvr
 
+这是一个基于 https://github.com/mfavant/avant 魔改的游戏服务器框架。支持无感不停服热更新、TCP、UDP、WebSocket、多进程交互。
+
 ## 如何构建
 
 请参考 Dockerfile 镜像构建过程。
@@ -12,7 +14,9 @@
 
 ## 如何加新协议
 
-加过新协议需要去 lua_plugin.cpp 处理, 写新的 Cmd 对应 Message 的构造工厂
+项目的proto文件放在protocol目录下，加过新协议需要去 lua_plugin.cpp 处理, 写新的 Cmd 对应 Message 的构造工厂。这样在 avant 接收到已经注册的协议时会将 C++ Protobuf消息转为 lua table 后传给luaVM处理。
+
+同理 luaVM 内发送 lua table 给 C++ 会将其转为 C++ Protobuf 消息。
 
 ```cpp
 // 将C++与Lua需要交互的协议加进来
@@ -47,6 +51,26 @@ void lua_plugin::init_message_factory()
     REGISTER_MSG(ProtoCmd::PROTO_CMD_CS_MAP_LEAVE_REQ, ProtoCSMapLeaveReq);
     REGISTER_MSG(ProtoCmd::PROTO_CMD_CS_MAP_LEAVE_RES, ProtoCSMapLeaveRes);
 }
+```
+
+## 协议处理
+
+lua中的协议处理在，MsgHandlerLogic.lua 中
+
+* `MsgHandler:HandlerMsgFromUDP` 处理接收的UDP协议包
+* `MsgHandler:HandlerMsgFromOther` 处理来自其他进程的协议包
+* `MsgHandler:HandlerMsgFromClient` 处理来自客户端的协议包
+* `MsgHandler:Send2UDP` 发送协议包UDP数据给目标IP与端口
+* `MsgHandler:Send2IPC` 发送协议包给目标其他进程
+* `MsgHandler:Send2Client` 发送协议包给目标客户端连接，客户端连接可能是WebSocket或TCP连接。
+
+## 关于dbsvrgo
+
+是基于 avant TCP 进程交互由Golang写的数据库操作，达到异步数据库操作。
+
+```bash
+avant(MapSvrGo luaVM) <---- TCP Protobuf ----> dbsvrgo(MySQL)
+  appId: 1.1.1.1                               appId: 1.1.2.1
 ```
 
 ## 调试 Lua
