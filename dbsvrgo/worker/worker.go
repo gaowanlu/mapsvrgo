@@ -4,57 +4,84 @@ import (
 	"log"
 	"reflect"
 
+	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
+	"dbsvrgo/client"
 	"dbsvrgo/db"
 	"dbsvrgo/mapper"
+	"dbsvrgo/proto_res"
 )
+
+type CmdHandler func(w *Worker, pkg *proto_res.ProtoPackage)
 
 // worker 接收消息进行操作
 type Worker struct {
-	ch chan proto.Message // 通道
+	ch       chan *proto_res.ProtoPackage // 通道
+	client   *client.Client
+	handlers map[proto_res.ProtoCmd]CmdHandler
 }
 
 // 创建worker size为通道最多等待处理消息大小
 func New(size int) *Worker {
-	return &Worker{ch: make(chan proto.Message, size)}
+	w := &Worker{ch: make(chan *proto_res.ProtoPackage, size),
+		client:   nil,
+		handlers: make(map[proto_res.ProtoCmd]CmdHandler)}
+	w.registerHandlers()
+	return w
 }
 
-// worker启动协程 处理写入操作
+func (w *Worker) SetClient(client *client.Client) {
+	w.client = client
+}
+
 func (w *Worker) Start() {
 	go func() {
-		for msg := range w.ch {
-			sqlStr, args, err := mapper.BuildSQL(msg)
-			if err != nil {
-				log.Println("build sql error:", err)
+		for pkg := range w.ch {
+
+			handler, ok := w.handlers[pkg.Cmd]
+			if !ok {
+				log.Println("未知的指令 CMD =", pkg.Cmd)
 				continue
 			}
 
-			result, err := db.DB.Exec(sqlStr, args...)
-			if err != nil {
-				log.Println("exec error:", err, sqlStr)
-				continue
-			}
-
-			// 受影响的行数
-			rows, err := result.RowsAffected()
-			if err != nil {
-				log.Println("RowsAffected error:", err)
-			} else {
-				log.Println("Rows affected:", rows)
-			}
-
-			// 如果是 INSERT，可获取自增 ID
-			if id, err := result.LastInsertId(); err == nil {
-				log.Println("Last insert id:", id)
-			}
+			handler(w, pkg)
 		}
 	}()
 }
 
+func (w *Worker) ExecWriteOper(msg proto.Message) error {
+	sqlStr, args, err := mapper.BuildSQL(msg)
+	if err != nil {
+		log.Println("build sql error:", err)
+		return err
+	}
+
+	result, err := db.DB.Exec(sqlStr, args...)
+	if err != nil {
+		log.Println("exec error:", err, sqlStr)
+		return err
+	}
+
+	// 受影响的行数
+	rows, err := result.RowsAffected()
+	if err != nil {
+		log.Println("RowsAffected error:", err)
+	} else {
+		log.Println("Rows affected:", rows)
+	}
+
+	// 如果是 INSERT，可获取自增 ID
+	if id, err := result.LastInsertId(); err == nil {
+		log.Println("Last insert id:", id)
+	}
+
+	return nil
+}
+
 // 将写入操作写入worker通道令其处理
-func (w *Worker) Push(msg proto.Message) {
+func (w *Worker) Push(msg *proto_res.ProtoPackage) {
 	w.ch <- msg
 }
 
@@ -196,4 +223,82 @@ func setScalar(pm protoreflect.Message, fd protoreflect.FieldDescriptor, v any) 
 	case protoreflect.DoubleKind:
 		pm.Set(fd, protoreflect.ValueOfFloat64(rv.Float()))
 	}
+}
+
+func (w *Worker) handleHandshake(pkg *proto_res.ProtoPackage) {
+	var msg proto_res.ProtoIPCStreamAuthHandshake
+	if err := proto.Unmarshal(pkg.Protocol, &msg); err != nil {
+		log.Println("解析失败:", err)
+		return
+	}
+	log.Println("RPC握手成功 AppId:", string(msg.AppId))
+}
+
+func (w *Worker) handleExampleRes(pkg *proto_res.ProtoPackage) {
+	var msg proto_res.ProtoCSResExample
+	if err := proto.Unmarshal(pkg.Protocol, &msg); err != nil {
+		log.Println("解析失败:", err)
+		return
+	}
+
+	appId := ""
+	if w.client != nil {
+		appId = w.client.GetAppId()
+	}
+
+	log.Printf(
+		"RPC发来消息 AppId %s: ProtoCmd_PROTO_CMD_CS_RES_EXAMPLE %s",
+		appId,
+		string(msg.TestContext),
+	)
+}
+
+func (w *Worker) handleWriteUserRecord(pkg *proto_res.ProtoPackage) {
+	var msg proto_res.DbUserRecord
+	if err := proto.Unmarshal(pkg.Protocol, &msg); err != nil {
+		log.Println("解析失败:", err)
+		return
+	}
+
+	log.Println(prototext.Format(&msg))
+	w.ExecWriteOper(&msg)
+}
+
+func (w *Worker) handleSelectUserRecord(pkg *proto_res.ProtoPackage) {
+	var msg proto_res.SelectDbUserRecordReq
+	if err := proto.Unmarshal(pkg.Protocol, &msg); err != nil {
+		log.Println("解析失败:", err)
+		return
+	}
+
+	log.Println(prototext.Format(&msg))
+
+	res, err := w.SelectRaw(&proto_res.DbUserRecord{}, msg.Where)
+	if err != nil {
+		log.Println("select error:", err)
+		return
+	}
+
+	resMsg := &proto_res.SelectDbUserRecordRes{}
+	for _, m := range res {
+		resMsg.UserRecordList = append(resMsg.UserRecordList, m.(*proto_res.DbUserRecord))
+	}
+
+	log.Println(prototext.Format(resMsg))
+	w.client.Send(proto_res.ProtoCmd_PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_RES, resMsg)
+}
+
+func (w *Worker) registerHandlers() {
+
+	w.handlers[proto_res.ProtoCmd_PROTO_CMD_IPC_STREAM_AUTH_HANDSHAKE] =
+		(*Worker).handleHandshake
+
+	w.handlers[proto_res.ProtoCmd_PROTO_CMD_CS_RES_EXAMPLE] =
+		(*Worker).handleExampleRes
+
+	w.handlers[proto_res.ProtoCmd_PROTO_CMD_DBSVRGO_WRITE_DBUSERRECORD_REQ] =
+		(*Worker).handleWriteUserRecord
+
+	w.handlers[proto_res.ProtoCmd_PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_REQ] =
+		(*Worker).handleSelectUserRecord
 }
