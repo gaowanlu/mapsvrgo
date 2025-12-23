@@ -54,6 +54,11 @@ MsgHandler.ProtoCmd = {
     PROTO_CMD_DBSVRGO_WRITE_DBUSERRECORD_REQ = 3000,
     PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_REQ = 3001,
     PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_RES = 3002,
+
+    PROTO_CMD_CS_REQ_CREATE_USER = 3003,
+    PROTO_CMD_CS_RES_CREATE_USER = 3004,
+    PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_REQ = 3005,
+    PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_RES = 3006,
 };
 
 function MsgHandler:DebugTableToString(t, indent)
@@ -360,6 +365,36 @@ MsgHandler.MsgFromClientCmd2Func = {
         });
     end,
 
+    [MsgHandler.ProtoCmd.PROTO_CMD_CS_REQ_CREATE_USER] = function(playerId, clientGID, workerIdx, cmd, message)
+        local ret = ErrCode.OK;
+        if #message.userId <= 0 or #message.userId > 64 then
+            ret = ErrCode.ERR_USERID_INPUT_INVALID;
+        end
+        if #message.password <= 0 or #message.password > 64 then
+            ret = ErrCode.ERR_PASSWORD_INPUT_INVALID;
+        end
+        if ret ~= ErrCode.OK then
+            return MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER, {
+                ret = ret
+            });
+        end
+
+        local TimeMgr = require("TimeMgrLogic");
+
+        local insertDbUserRecordReq = {
+            clientGID = clientGID,
+            workerIdx = workerIdx,
+            dbUserRecord = {
+                id = TimeMgr.GetMS(),
+                userId = message.userId,
+                password = message.password
+            }
+        };
+
+        MsgHandler:Send2IPC(avant:GetDBSvrGoAppID(),
+            MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_REQ, insertDbUserRecordReq);
+    end
+
 };
 
 --- 客户端来新消息了
@@ -398,6 +433,18 @@ function MsgHandler:HandlerMsgFromOther(cmd, message, app_id)
             if str ~= nil then
                 Log:Error("%s", str);
             end
+        end,
+
+        [MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_RES] = function()
+            local protoCSResCreateUser = {
+                ret = message.ret,
+                userId = message.dbUserRecord.userId,
+                password = message.dbUserRecord.password,
+                userRecordID = message.dbUserRecord.id
+            };
+
+            self:Send2Client(message.clientGID, message.workerIdx,
+                MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER, protoCSResCreateUser);
         end
     }
 

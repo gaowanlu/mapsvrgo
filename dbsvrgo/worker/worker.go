@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"fmt"
 	"log"
 	"reflect"
 
@@ -288,6 +289,45 @@ func (w *Worker) handleSelectUserRecord(pkg *proto_res.ProtoPackage) {
 	w.client.Send(proto_res.ProtoCmd_PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_RES, resMsg)
 }
 
+func (w *Worker) handleInsertDbUserRecordReq(pkg *proto_res.ProtoPackage) {
+	var msg proto_res.InsertDbUserRecordReq
+	if err := proto.Unmarshal(pkg.Protocol, &msg); err != nil {
+		log.Println("解析失败:", err)
+		return
+	}
+
+	msg.DbUserRecord.Op = proto_res.DbOpType_OP_INSERT
+	err := w.ExecWriteOper(msg.DbUserRecord)
+
+	var msgRes proto_res.InsertDbUserRecordRes
+	msgRes.ClientGID = msg.ClientGID
+	msgRes.Ret = 0
+	msgRes.WorkerIdx = msg.WorkerIdx
+
+	if err != nil {
+		msgRes.Ret = -1
+
+	} else {
+		res, err := w.SelectRaw(&proto_res.DbUserRecord{}, fmt.Sprintf("id=%d limit 1", msg.DbUserRecord.Id))
+		if err != nil {
+			log.Println("select error:", err)
+			msgRes.Ret = -1
+		} else {
+			if len(res) > 0 {
+				msgRes.DbUserRecord = res[0].(*proto_res.DbUserRecord)
+				log.Println(prototext.Format(msgRes.DbUserRecord))
+			} else {
+				msgRes.Ret = -1
+			}
+
+		}
+	}
+
+	w.client.Send(proto_res.ProtoCmd_PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_RES, &msgRes)
+
+	log.Println(prototext.Format(&msgRes))
+}
+
 func (w *Worker) registerHandlers() {
 
 	w.handlers[proto_res.ProtoCmd_PROTO_CMD_IPC_STREAM_AUTH_HANDSHAKE] =
@@ -301,4 +341,7 @@ func (w *Worker) registerHandlers() {
 
 	w.handlers[proto_res.ProtoCmd_PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_REQ] =
 		(*Worker).handleSelectUserRecord
+
+	w.handlers[proto_res.ProtoCmd_PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_REQ] =
+		(*Worker).handleInsertDbUserRecordReq
 }

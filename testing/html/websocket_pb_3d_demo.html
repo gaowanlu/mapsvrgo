@@ -127,6 +127,7 @@
         <button id="btnConnect">连接</button>
         <button id="btnLogin">登录</button>
         <button id="btnEnter">进入3D地图</button>
+        <button id="btnCreateUser">注册账号</button>
         <pre id="log">未连接</pre>
     </div>
 
@@ -163,6 +164,8 @@ enum ProtoCmd{
     PROTO_CMD_CS_MAP3D_NOTIFY_STATE_DATA = 2016;
     PROTO_CMD_CS_MAP3D_ENTER_REQ = 2017;
     PROTO_CMD_CS_MAP3D_ENTER_RES = 2018;
+    PROTO_CMD_CS_REQ_CREATE_USER = 3003;
+    PROTO_CMD_CS_RES_CREATE_USER = 3004;
 }
 message ProtoPackage{
   ProtoCmd cmd=1;
@@ -202,6 +205,22 @@ message ProtoCSMap3DEnterRes{
   int32 ret=1;
   uint32 mapId=2;
 }
+
+// PROTO_CMD_CS_REQ_CREATE_USER 创建新账号请求
+message ProtoCSReqCreateUser
+{
+    string userId=1;
+    string password=2;
+}
+
+// PROTO_CMD_CS_RES_CREATE_USER 创建新账号返回
+message ProtoCSResCreateUser
+{
+    int32 ret=1;
+    string userId=2;
+    string password=3;
+    uint64 userRecordID=4;
+}
 `;
 
         const root = protobuf.parse(protoText).root;
@@ -212,6 +231,9 @@ message ProtoCSMap3DEnterRes{
         const T_State = root.lookupType("avant.ProtoCSMap3DNotifyStateData");
         const T_Input = root.lookupType("avant.ProtoCSReqMap3DInput");
         const T_Enter = root.lookupType("avant.ProtoCSMap3DEnterReq");
+        const T_ProtoCSReqCreateUser = root.lookupType("avant.ProtoCSReqCreateUser");
+        const T_ProtoCSResCreateUser = root.lookupType("avant.ProtoCSResCreateUser");
+
 
         // ===================== UI / Log =====================
         const logEl = document.getElementById("log");
@@ -278,6 +300,13 @@ message ProtoCSMap3DEnterRes{
                     log("✓ 进入3D地图成功");
                     showPointerLockHint();
                     break;
+                case Cmd.PROTO_CMD_CS_RES_CREATE_USER:
+                    try {
+                        const resCreateUser = T_ProtoCSResCreateUser.decode(msg.protocol);
+                        const createUserObj = T_ProtoCSResCreateUser.toObject(resCreateUser, { longs: String });
+                        log(`PROTO_CMD_CS_RES_CREATE_USER ${JSON.stringify(createUserObj)}`);
+                    } catch (e) { log('decode login err', e.message); }
+                    break;
                 default:
                     log("未处理协议:", msg.cmd);
             }
@@ -315,6 +344,18 @@ message ProtoCSMap3DEnterRes{
                 Cmd.PROTO_CMD_CS_MAP3D_ENTER_REQ
             );
             log("请求进入地图");
+        };
+
+        document.getElementById("btnCreateUser").onclick = () => {
+            sendInner(
+                T_ProtoCSReqCreateUser,
+                {
+                    userId: document.getElementById("userId").value,
+                    password: document.getElementById("password").value
+                },
+                Cmd.PROTO_CMD_CS_REQ_CREATE_USER
+            );
+            log("发送注册账号请求");
         };
 
         // ===================== Three.js =====================

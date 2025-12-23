@@ -127,6 +127,9 @@
                     <button id="btnStartAutoInput">启动自动输入</button>
                     <button id="btnStopAutoInput">停止自动输入</button>
                 </div>
+                <div style="display:flex;gap:8px;margin-top:8px">
+                    <button id="btnCreateUser">注册账号</button>
+                </div>
             </div>
 
             <div class="card">
@@ -193,6 +196,9 @@ enum ProtoCmd
     PROTO_CMD_CS_MAP_ENTER_RES = 2009;
     PROTO_CMD_CS_MAP_LEAVE_REQ = 2010;
     PROTO_CMD_CS_MAP_LEAVE_RES = 2011;
+
+    PROTO_CMD_CS_REQ_CREATE_USER = 3003;
+    PROTO_CMD_CS_RES_CREATE_USER = 3004;
 }
 
 message ProtoPackage
@@ -297,6 +303,22 @@ message ProtoIPCStreamAuthHandshake
 {
     bytes appId = 1;
 }
+
+// PROTO_CMD_CS_REQ_CREATE_USER 创建新账号请求
+message ProtoCSReqCreateUser
+{
+    string userId=1;
+    string password=2;
+}
+
+// PROTO_CMD_CS_RES_CREATE_USER 创建新账号返回
+message ProtoCSResCreateUser
+{
+    int32 ret=1;
+    string userId=2;
+    string password=3;
+    uint64 userRecordID=4;
+}
 `;
 
         // 解析 proto 文本并构建 root
@@ -309,6 +331,10 @@ message ProtoIPCStreamAuthHandshake
         // inner types
         const T_ProtoCSReqLogin = root.lookupType("avant.ProtoCSReqLogin");
         const T_ProtoCSResLogin = root.lookupType("avant.ProtoCSResLogin");
+
+        const T_ProtoCSReqCreateUser = root.lookupType("avant.ProtoCSReqCreateUser");
+        const T_ProtoCSResCreateUser = root.lookupType("avant.ProtoCSResCreateUser");
+
         const T_ProtoCSMapNotifyInitData = root.lookupType("avant.ProtoCSMapNotifyInitData");
         const T_ProtoCSMapNotifyStateData = root.lookupType("avant.ProtoCSMapNotifyStateData");
         const T_ProtoCSReqMapInput = root.lookupType("avant.ProtoCSReqMapInput");
@@ -338,6 +364,7 @@ message ProtoIPCStreamAuthHandshake
         const btnEnterMap = document.getElementById('btnEnterMap');
         const btnStartAutoInput = document.getElementById('btnStartAutoInput');
         const btnStopAutoInput = document.getElementById('btnStopAutoInput');
+        const btnCreateUser = document.getElementById('btnCreateUser');
 
         function log(...args) {
             const s = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
@@ -561,6 +588,15 @@ message ProtoIPCStreamAuthHandshake
                     } catch (e) { log('decode example err', e.message); }
                     break;
 
+                case "PROTO_CMD_CS_RES_CREATE_USER":
+                case ProtoCmdEnum.PROTO_CMD_CS_RES_CREATE_USER:
+                    try {
+                        const resCreateUser = T_ProtoCSResCreateUser.decode(innerBytes);
+                        const createUserObj = T_ProtoCSResCreateUser.toObject(resCreateUser, { longs: String });
+                        log('PROTO_CMD_CS_RES_CREATE_USER', createUserObj);
+                    } catch (e) { log('decode login err', e.message); }
+                    break;
+
                 default:
                     // 未知命令，尝试打印数字值
                     log('未知或未处理 cmd:', obj.cmd);
@@ -705,6 +741,18 @@ message ProtoIPCStreamAuthHandshake
             // 构造 ProtoCSReqLogin，并包装成 ProtoPackage，发送
             sendInnerProto(T_ProtoCSReqLogin, { userId: uid, password: pw }, ProtoCmdEnum.PROTO_CMD_CS_REQ_LOGIN);
             log('发送登录', { userId: uid, password: pw });
+        });
+
+        // 注册
+        btnCreateUser.addEventListener('click', () => {
+            const uid = selfUserIdInput.value.trim();
+            const pw = passwordInput.value;
+            console.log("注册", { uid, pw });
+
+            sendInnerProto(T_ProtoCSReqCreateUser, {
+                userId: uid,
+                password: pw
+            }, ProtoCmdEnum.PROTO_CMD_CS_REQ_CREATE_USER);
         });
 
         // 进入地图（mapId=2）

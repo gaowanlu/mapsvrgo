@@ -187,3 +187,19 @@ message ProtoCSMap3DLeaveRes
 {
     int32 ret=1;
 }
+
+// PROTO_CMD_CS_REQ_CREATE_USER 创建新账号请求
+message ProtoCSReqCreateUser
+{
+    string userId=1;
+    string password=2;
+}
+
+// PROTO_CMD_CS_RES_CREATE_USER 创建新账号返回
+message ProtoCSResCreateUser
+{
+    int32 ret=1;
+    string userId=2;
+    string password=3;
+    uint64 userRecordID=4;
+}

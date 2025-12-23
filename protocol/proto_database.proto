@@ -30,3 +30,16 @@ message SelectDbUserRecordReq{
 message SelectDbUserRecordRes{
     repeated DbUserRecord userRecordList = 1;
 }
+
+message InsertDbUserRecordReq{
+    uint64 clientGID = 1;
+    int32 workerIdx = 2;
+    DbUserRecord dbUserRecord = 3;
+}
+
+message InsertDbUserRecordRes{
+    uint64 clientGID = 1;
+    int32 workerIdx = 2;
+    DbUserRecord dbUserRecord = 3;
+    int32 ret = 4;
+}
