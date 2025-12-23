@@ -141,7 +141,7 @@ func BuildSQL(msg proto.Message) (string, []any, error) {
 }
 
 // 检索行
-func BuildSelectRawSQL(msg proto.Message, where string) (string, *MetaInfo, error) {
+func BuildSelectRawSQL(msg proto.Message, where string, args ...any) (string, *MetaInfo, error) {
 	meta := getMeta(msg)
 
 	cols := make([]string, 0, len(meta.Fields))

@@ -26,6 +26,7 @@
 ---@class PlayerType
 ---@field RoleDbData RoleDbDataType
 ---@field components PlayerComponentsType
+---@field DbUserRecord table|nil mysql玩家数据
 
 ---@class Player:PlayerType
 local Player = require("PlayerData");
@@ -69,6 +70,8 @@ function Player.new(playerId)
     }
     self.RoleDbData.Bag.items[1001] = 1 -- 道具ID1001数量1个
 
+    self.DbUserRecord = nil;
+
     -- Player下组件挂载
     self.components = {
         info  = PlayerCmptInfo.new(self),
@@ -93,6 +96,11 @@ end
 ---@return string
 function Player:GetPlayerID()
     return self:GetRoleDbData().id
+end
+
+---@return table|nil
+function Player:GetDbUserRecord()
+    return self.DbUserRecord
 end
 
 ---@return number
@@ -149,7 +157,8 @@ function Player:OnTick()
     end
 end
 
-function Player:OnLogin()
+function Player:OnLogin(DbUserRecord)
+    self.DbUserRecord = DbUserRecord;
     for _, comp in pairs(self.components) do
         comp:OnLogin()
     end

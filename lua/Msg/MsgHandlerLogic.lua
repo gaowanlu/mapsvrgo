@@ -59,6 +59,8 @@ MsgHandler.ProtoCmd = {
     PROTO_CMD_CS_RES_CREATE_USER = 3004,
     PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_REQ = 3005,
     PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_RES = 3006,
+    PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_REQ = 3007,
+    PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_RES = 3008,
 };
 
 function MsgHandler:DebugTableToString(t, indent)
@@ -125,6 +127,8 @@ MsgHandler.MsgFromClientCmd2Func = {
         end
         -- Log:Error("New Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx)
 
+        PlayerMgr.SetPlayerIdOnline(playerId);
+
         local player = PlayerMgr.GetPlayerByPlayerId(playerId)
 
         if player ~= nil then
@@ -152,18 +156,21 @@ MsgHandler.MsgFromClientCmd2Func = {
         end
         -- Log:Error("Close Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx)
 
+        PlayerMgr.SetPlayerIdOffline(playerId);
+
         local player = PlayerMgr.GetPlayerByPlayerId(playerId)
         if player ~= nil then
             player:OnLogout()
             PlayerMgr.RemovePlayerByPlayerId(playerId)
 
-            -- dbsvrgo测试 注意防止SQL注入
-            local numberUserId = tonumber(player:GetUserId());
-            if numberUserId ~= nil then
+            local DbUserRecord = player:GetDbUserRecord()
+            if DbUserRecord ~= nil then
+                Log:Error("logout save to database for playerId %s userId %s", playerId, player:GetUserId())
+
+                DbUserRecord.op = 1; -- replace
                 MsgHandler:Send2IPC(avant:GetDBSvrGoAppID(),
-                    MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_REQ, {
-                        where = string.format("userId=%s limit 1", tostring(numberUserId)),
-                    });
+                    MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_WRITE_DBUSERRECORD_REQ,
+                    DbUserRecord);
             end
         else
             -- Log:Error("Player does not exist for gid[%d] workerIdx[%d]", clientGID, workerIdx)
@@ -213,56 +220,23 @@ MsgHandler.MsgFromClientCmd2Func = {
         -- Log:Error("Login Request from clientGID[%d] workerIdx[%d] message: %s", clientGID,
         --     workerIdx, self:DebugTableToString(message));
 
-        local userConfig = ConfigTableMgr.UserConfigs:get(message["userId"])
-        if userConfig == nil then
-            Log:Error("UserConfig not found for userId[%s]", message["userId"])
-            return
-        end
-        -- 验证密码
-        if userConfig.password ~= message["password"] then
-            Log:Error("Password incorrect for userId[%s]", message["userId"])
-            return
-        end
-
         -- 查userId是否已经有了玩家对象 有的话说明重复登录了
-        local playerByUserId = PlayerMgr.GetPlayerByUserId(userConfig.userId)
+        local playerByUserId = PlayerMgr.GetPlayerByUserId(message["userId"])
         if playerByUserId ~= nil then
-            Log:Error("UserId[%s] already logged in", userConfig.userId)
+            Log:Error("UserId[%s] already logged in", message["userId"])
             return
         end
 
-        -- 测试发向dbsvrgo
-        MsgHandler:Send2IPC(avant:GetDBSvrGoAppID(), MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_WRITE_DBUSERRECORD_REQ, {
-            op = 1,
-            id = 1,
-            userId = userConfig.userId,
-            password = userConfig.password,
-            baseInfo = {
-                level = math.random(0, 100)
-            }
-        });
+        local selectDbUserRecordLoginReq = {
+            playerId = playerId,
+            clientGID = clientGID,
+            workerIdx = workerIdx,
+            userId = message["userId"],
+            password = message["password"]
+        };
 
-        -- 创建玩家对象
-        local createPlayer = PlayerMgr.CreatePlayer(playerId)
-        if createPlayer == nil then
-            Log:Error("Failed to create player for gid[%d] workerIdx[%d]", clientGID, workerIdx)
-            return
-        end
-
-        -- 将 gid_workerIdx 和 userId 关联到 Player 对象上
-        -- PlayerMgr 的 userId 与 playerId的双向映射
-        PlayerMgr.BindUserIdAndPlayerId(userConfig.userId, playerId);
-        -- 设置 Player 的 userId、clientGID、workerIdx
-        createPlayer:SetUserId(userConfig.userId)
-        createPlayer:SetClientGID(clientGID)
-        createPlayer:SetWorkerIdx(workerIdx)
-
-        MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_LOGIN, {
-            ret = ErrCode.OK,
-            sessionId = playerId
-        });
-
-        createPlayer:OnLogin()
+        MsgHandler:Send2IPC(avant:GetDBSvrGoAppID(), MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_REQ,
+            selectDbUserRecordLoginReq);
     end,
 
     -- PROTO_CMD_CS_REQ_MAP_PING 地图内客户端心跳请求
@@ -445,7 +419,59 @@ function MsgHandler:HandlerMsgFromOther(cmd, message, app_id)
 
             self:Send2Client(message.clientGID, message.workerIdx,
                 MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER, protoCSResCreateUser);
-        end
+        end,
+
+        [MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_RES] = function()
+            local selectDbUserRecordLoginRes = message;
+
+            Log:Error("login callback %s", self:DebugTableToString(message))
+
+            local playerId = selectDbUserRecordLoginRes.playerId;
+            local clientGID = selectDbUserRecordLoginRes.clientGID;
+            local workerIdx = selectDbUserRecordLoginRes.workerIdx;
+            local userId = selectDbUserRecordLoginRes.userId;
+
+            -- 判断密码是否正确
+            local protoCSResLogin = {
+                ret = ErrCode.OK,
+                sessionId = selectDbUserRecordLoginRes.playerId
+            };
+
+            if selectDbUserRecordLoginRes.ret ~= 0 then
+                protoCSResLogin.ret = ErrCode.ERR_USERID_OR_PASSWORD_NOTMATCH;
+            elseif selectDbUserRecordLoginRes.password ~= selectDbUserRecordLoginRes.userRecord.password then
+                protoCSResLogin.ret = ErrCode.ERR_USERID_OR_PASSWORD_NOTMATCH;
+            elseif not PlayerMgr.IsPlayerIdOnline(playerId) then
+                Log:Error("Login callback playerId %s not online", playerId);
+            elseif nil ~= PlayerMgr.GetPlayerByPlayerId(playerId) then
+                Log:Error("already online playerId %s", playerId);
+            elseif nil ~= PlayerMgr.GetPlayerByUserId(userId) then
+                Log:Error("already online userId %s", userId);
+            else
+                -- 创建玩家对象
+                local createPlayer = PlayerMgr.CreatePlayer(playerId)
+                if createPlayer == nil then
+                    Log:Error("Failed to create player for gid[%d] workerIdx[%d]", clientGID, workerIdx)
+                    return
+                end
+
+                -- 将 gid_workerIdx 和 userId 关联到 Player 对象上
+                -- PlayerMgr 的 userId 与 playerId的双向映射
+                PlayerMgr.BindUserIdAndPlayerId(userId, playerId);
+                -- 设置 Player 的 userId、clientGID、workerIdx
+                createPlayer:SetUserId(userId)
+                createPlayer:SetClientGID(clientGID)
+                createPlayer:SetWorkerIdx(workerIdx)
+
+                MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_LOGIN, protoCSResLogin);
+
+                -- 将数据库玩家数据赋值到其Player对象上
+                createPlayer:OnLogin(selectDbUserRecordLoginRes.userRecord)
+                return;
+            end
+
+            MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_LOGIN, protoCSResLogin);
+        end,
     }
 
     local fn = handlers[cmd]

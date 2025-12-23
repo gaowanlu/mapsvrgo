@@ -2,6 +2,7 @@
 ---@field players table<string,Player>
 ---@field userIdToPlayerId table<number,string>
 ---@field playerIdToUserId table<string,number>
+---@field playerIdOnlineList table<string,number>
 
 ---@class PlayerMgr:PlayerMgrType
 local PlayerMgr = require("PlayerMgrData");
@@ -11,6 +12,7 @@ local Log = require("Log")
 PlayerMgr["players"] = PlayerMgr["players"] or {}
 PlayerMgr["userIdToPlayerId"] = PlayerMgr["userIdToPlayerId"] or {}
 PlayerMgr["playerIdToUserId"] = PlayerMgr["playerIdToUserId"] or {}
+PlayerMgr["playerIdOnlineList"] = PlayerMgr["playerIdOnlineList"] or {}
 
 ---@param playerId string
 ---@return Player
@@ -24,6 +26,22 @@ function PlayerMgr.CreatePlayer(playerId)
     local player = Player.new(playerId)
     PlayerMgr.players[playerId] = player
     return player
+end
+
+---@param playerId string
+function PlayerMgr.SetPlayerIdOnline(playerId)
+    PlayerMgr.playerIdOnlineList[playerId] = true
+end
+
+---@param playerId string
+function PlayerMgr.SetPlayerIdOffline(playerId)
+    PlayerMgr.playerIdOnlineList[playerId] = nil
+end
+
+---@param playerId string
+---@return boolean
+function PlayerMgr.IsPlayerIdOnline(playerId)
+    return PlayerMgr.playerIdOnlineList[playerId] ~= nil;
 end
 
 ---@param playerId string

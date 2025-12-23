@@ -1,7 +1,6 @@
 package worker
 
 import (
-	"fmt"
 	"log"
 	"reflect"
 
@@ -89,18 +88,18 @@ func (w *Worker) Push(msg *proto_res.ProtoPackage) {
 // SelectRaw 用于执行 SELECT 查询，并将结果行反序列化为 proto.Message 切片
 // msg   : 一个 proto Message 模板（用于 Clone 和反射字段信息）
 // where : SQL 的 where 条件（如 "user_id=123"）
-func (w *Worker) SelectRaw(msg proto.Message, where string) ([]proto.Message, error) {
+func (w *Worker) SelectRaw(msg proto.Message, where string, args ...any) ([]proto.Message, error) {
 
 	// 通过 mapper 构建 SELECT SQL 语句
 	// sqlStr : 完整的 SELECT SQL
 	// meta   : proto 与数据库字段的映射元信息（字段顺序、类型等）
-	sqlStr, meta, err := mapper.BuildSelectRawSQL(msg, where)
+	sqlStr, meta, err := mapper.BuildSelectRawSQL(msg, where, args...)
 	if err != nil {
 		return nil, err
 	}
 
 	// 执行查询
-	rows, err := db.DB.Query(sqlStr)
+	rows, err := db.DB.Query(sqlStr, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +307,7 @@ func (w *Worker) handleInsertDbUserRecordReq(pkg *proto_res.ProtoPackage) {
 		msgRes.Ret = -1
 
 	} else {
-		res, err := w.SelectRaw(&proto_res.DbUserRecord{}, fmt.Sprintf("id=%d limit 1", msg.DbUserRecord.Id))
+		res, err := w.SelectRaw(&proto_res.DbUserRecord{}, "id=? limit 1", msg.DbUserRecord.Id)
 		if err != nil {
 			log.Println("select error:", err)
 			msgRes.Ret = -1
@@ -328,6 +327,38 @@ func (w *Worker) handleInsertDbUserRecordReq(pkg *proto_res.ProtoPackage) {
 	log.Println(prototext.Format(&msgRes))
 }
 
+func (w *Worker) handleSelectDbUserRecordLoginReq(pkg *proto_res.ProtoPackage) {
+	var req proto_res.SelectDbUserRecordLoginReq
+	if err := proto.Unmarshal(pkg.Protocol, &req); err != nil {
+		log.Println("解析失败:", err)
+		return
+	}
+
+	var res proto_res.SelectDbUserRecordLoginRes
+	res.PlayerId = req.PlayerId
+	res.ClientGID = req.ClientGID
+	res.WorkerIdx = req.WorkerIdx
+	res.UserId = req.UserId
+	res.Password = req.Password
+	res.Ret = 0
+
+	selectRes, err := w.SelectRaw(&proto_res.DbUserRecord{}, "userId=? limit 1", req.UserId)
+	if err != nil {
+		log.Println("select error:", err)
+		res.Ret = -1
+	} else {
+		if len(selectRes) > 0 {
+			res.UserRecord = selectRes[0].(*proto_res.DbUserRecord)
+			log.Println(prototext.Format(res.UserRecord))
+		} else {
+			res.Ret = -1
+		}
+
+	}
+
+	w.client.Send(proto_res.ProtoCmd_PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_RES, &res)
+}
+
 func (w *Worker) registerHandlers() {
 
 	w.handlers[proto_res.ProtoCmd_PROTO_CMD_IPC_STREAM_AUTH_HANDSHAKE] =
@@ -344,4 +375,7 @@ func (w *Worker) registerHandlers() {
 
 	w.handlers[proto_res.ProtoCmd_PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_REQ] =
 		(*Worker).handleInsertDbUserRecordReq
+
+	w.handlers[proto_res.ProtoCmd_PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_REQ] =
+		(*Worker).handleSelectDbUserRecordLoginReq
 }
