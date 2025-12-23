@@ -1,0 +1,60 @@
+---@class avant
+---@field Logger function avant.Logger(str):integer
+---@field Lua2Protobuf function Client:avant.Lua2Protobuf(message, 1, cmd, clientGID, workerIdx, ""); IPC:avant.Lua2Protobuf(message, 2, cmd, 0, -1, appId); UDP:avant.Lua2Protobuf(message, 3, cmd, 0, port, ip);
+---@field HighresTime function avant.HighresTime():seconds:number, nanoseconds:integer
+---@field Monotonic function avant.Monotonic():steady_clocknanoseconds:integer
+---@field LuaDir string LuaDir路径
+---@field AppID string 本服务AppID 大区.服.服务ID.实例ID
+---@field GetDBSvrGoAppID function ():string 获取与之对应的DBSvrGO进程的AppID
+---@field GetThisServiceAppIDParts function ():list 返回{"大区","服","服务ID","实例ID"}
+---@field AVANT_DBSVRGO_APPID string|nil 缓存对应DbSvrGO进程的AppID
+---@field AVANT_THISSERVICEINSTANCE_APPID_PARTS table|nil 返回本服务实例的{"大区","服","服务ID","实例ID"}
+avant = avant or nil
+
+local AVANT_MAPSVRGO_SERVICEID = "1"
+local AVANT_DBSVRGO_SERVICEID = "2"
+
+---@return table 返回本服务实例的{"大区","服","服务ID","实例ID"}
+function avant:GetThisServiceAppIDParts()
+    -- 只会在未初始化时计算一次
+    if self.AVANT_THISSERVICEINSTANCE_APPID_PARTS == nil then
+        local selfAppID = self.AppID -- "大区.服.服务ID.实例ID"
+
+        -- 使用 string.gmatch 分割字符串
+        local parts = {}
+        for part in string.gmatch(selfAppID, "([^%.]+)") do
+            table.insert(parts, part)
+        end
+        self.AVANT_THISSERVICEINSTANCE_APPID_PARTS = parts
+    end
+
+    -- 复制表，确保不会修改原始数据
+    local newParts = {}
+    for i, v in ipairs(self.AVANT_THISSERVICEINSTANCE_APPID_PARTS) do
+        newParts[i] = v
+    end
+
+    return newParts
+end
+
+---@return string 返回本服务对应的DBSvrGO进程的AppID
+function avant:GetDBSvrGoAppID()
+    -- 如果缓存已有值，直接返回
+    if self.AVANT_DBSVRGO_APPID ~= nil then
+        return self.AVANT_DBSVRGO_APPID
+    end
+
+    local parts = self:GetThisServiceAppIDParts()
+
+    -- 替换服务ID部分，假设服务ID是第三个部分
+    parts[3] = AVANT_DBSVRGO_SERVICEID
+
+    -- 重新拼接成一个字符串
+    local newAppID = table.concat(parts, ".")
+
+    self.AVANT_DBSVRGO_APPID = newAppID
+
+    return self.AVANT_DBSVRGO_APPID
+end
+
+return avant

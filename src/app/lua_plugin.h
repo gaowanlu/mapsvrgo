@@ -21,7 +21,7 @@ namespace avant::app
 
         void init_message_factory();
 
-        void on_main_init(const std::string &lua_dir, const int worker_cnt);
+        void on_main_init(const std::string &lua_dir, const std::string &app_id, const int worker_cnt);
 
         void real_on_main_init();
         void on_main_stop();
@@ -109,6 +109,7 @@ namespace avant::app
         avant::workers::other *ptr_other_obj{nullptr};
 
         std::string lua_dir;
+        std::string app_id;
 
         std::unordered_map<int, std::function<std::shared_ptr<google::protobuf::Message>()>> message_factory;
     };

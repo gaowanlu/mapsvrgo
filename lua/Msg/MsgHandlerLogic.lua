@@ -152,13 +152,13 @@ MsgHandler.MsgFromClientCmd2Func = {
             player:OnLogout()
             PlayerMgr.RemovePlayerByPlayerId(playerId)
 
-            -- dbsvrgo测试
+            -- dbsvrgo测试 注意防止SQL注入
             local numberUserId = tonumber(player:GetUserId());
             if numberUserId ~= nil then
-                -- 注意防止SQL注入
-                MsgHandler:Send2IPC("1.1.2.1", MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_REQ, {
-                    where = string.format("userId=%s limit 1", tostring(numberUserId)),
-                });
+                MsgHandler:Send2IPC(avant:GetDBSvrGoAppID(),
+                    MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_REQ, {
+                        where = string.format("userId=%s limit 1", tostring(numberUserId)),
+                    });
             end
         else
             -- Log:Error("Player does not exist for gid[%d] workerIdx[%d]", clientGID, workerIdx)
@@ -227,7 +227,7 @@ MsgHandler.MsgFromClientCmd2Func = {
         end
 
         -- 测试发向dbsvrgo
-        MsgHandler:Send2IPC("1.1.2.1", MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_WRITE_DBUSERRECORD_REQ, {
+        MsgHandler:Send2IPC(avant:GetDBSvrGoAppID(), MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_WRITE_DBUSERRECORD_REQ, {
             op = 1,
             id = 1,
             userId = userConfig.userId,

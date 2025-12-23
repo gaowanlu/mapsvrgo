@@ -1,6 +1,6 @@
 # MapSvr
 
-这是一个基于 https://github.com/mfavant/avant 魔改的游戏服务器框架。支持无感不停服热更新、TCP、UDP、WebSocket、多进程交互。
+基于 [mfavant/avant](https://github.com/mfavant/avant) 魔改的游戏服务器框架。支持无感不停服热更新、TCP Stream、UDP、WebSocket、多进程交互。
 
 ## 如何构建
 
@@ -10,11 +10,11 @@
 
 在 config 下的 main.ini 与 ipc.json。
 
-任务类型 可选 stream 与 websocket。
+任务类型 可选 TCP Stream 与 WebSocket。
 
-## 如何加新协议
+## 添加新协议
 
-项目的proto文件放在protocol目录下，加过新协议需要去 lua_plugin.cpp 处理, 写新的 Cmd 对应 Message 的构造工厂。这样在 avant 接收到已经注册的协议时会将 C++ Protobuf消息转为 lua table 后传给luaVM处理。
+项目的 proto 文件放在 protocol 目录下，加过新协议需要去 lua_plugin.cpp 处理, 写新的 Cmd 对应 Message 的构造工厂。这样在 avant 接收到已经注册的协议时会将 C++ Protobuf 消息转为 lua table 后传给 luaVM 处理。
 
 同理 luaVM 内发送 lua table 给 C++ 会将其转为 C++ Protobuf 消息。
 
@@ -55,18 +55,18 @@ void lua_plugin::init_message_factory()
 
 ## 协议处理
 
-lua中的协议处理在，MsgHandlerLogic.lua 中
+lua 中的协议处理在，MsgHandlerLogic.lua 中。
 
-* `MsgHandler:HandlerMsgFromUDP` 处理接收的UDP协议包
-* `MsgHandler:HandlerMsgFromOther` 处理来自其他进程的协议包
-* `MsgHandler:HandlerMsgFromClient` 处理来自客户端的协议包
-* `MsgHandler:Send2UDP` 发送协议包UDP数据给目标IP与端口
-* `MsgHandler:Send2IPC` 发送协议包给目标其他进程
-* `MsgHandler:Send2Client` 发送协议包给目标客户端连接，客户端连接可能是WebSocket或TCP连接。
+* `MsgHandler:HandlerMsgFromUDP` 处理接收的 UDP 协议包。
+* `MsgHandler:HandlerMsgFromOther` 处理来自其他进程的协议包。
+* `MsgHandler:HandlerMsgFromClient` 处理来自客户端的协议包。
+* `MsgHandler:Send2UDP` 发送协议包 UDP 数据给目标 IP 与端口。
+* `MsgHandler:Send2IPC` 发送协议包给目标其他进程。
+* `MsgHandler:Send2Client` 发送协议包给目标客户端连接，客户端连接可能是 WebSocket 或 TCP 连接。
 
 ## 关于dbsvrgo
 
-是基于 avant TCP 进程交互由Golang写的数据库操作，达到异步数据库操作。
+是基于 avant TCP 进程交互由 Golang 写的数据库操作，达到异步数据库操作。
 
 ```bash
 avant(MapSvrGo luaVM) <---- TCP Protobuf ----> dbsvrgo(MySQL)
@@ -75,7 +75,7 @@ avant(MapSvrGo luaVM) <---- TCP Protobuf ----> dbsvrgo(MySQL)
 
 ## 调试 Lua
 
-VSCode + Emmylua（VSCode插件）
+VSCode + Emmylua（VSCode插件）。
 
 ### build emmy_core.so
 
@@ -90,9 +90,9 @@ cmake --build . --config Release
 
 ### CMakeLists.txt
 
-将 emmy_core.so 拷到 MapSvr 下
+将 emmy_core.so 拷到 MapSvr 下。
 
-改一下 lua_plugin.cpp
+改一下 lua_plugin.cpp。
 
 ```cpp
 // 声明到 lua_plugin.cpp中
@@ -121,7 +121,7 @@ void lua_plugin::on_other_init(avant::workers::other *ptr_other_obj)
 }
 ```
 
-构建 avant 时，将 CMakeLists.txt 中 target_link_libraries 链一下 emmy_core.so
+构建 avant 时，将 CMakeLists.txt 中 target_link_libraries 链一下 emmy_core.so。
 
 ```txt
 target_link_libraries(${PROJECT_NAME} ... /dev_dir/mc_like/minecraft_like/MapSvr/emmy_core.so ${EXTERNAL_LIB})
@@ -188,7 +188,7 @@ MapSvr/.vscode/launch.json
 
 ### 启动 avant
 
-启动 avant 程序 other 线程将会阻塞在 Other_dbg.waitIDE()
+启动 avant 程序 other 线程将会阻塞在 Other_dbg.waitIDE()。
 
 ### VSCode 连接到 Other_dbg
 
@@ -261,12 +261,12 @@ A.lua B.lua C.lua A.lua B.lua C.lua A.lua B.lua C.lua A.lua B.lua C.lua A.lua B.
 * C.lua require A.lua
 
 Lua的特性是：`require()` 会先创建一个空的 moudle 表放进 `package.loaded`，然后执行模块文件，如果模块文件在执行过程中又 
-require 自己依赖链上的模块，就会不断嵌套执行，最终爆掉 C栈。
+require 自己依赖链上的模块，就会不断嵌套执行，最终爆掉 C 栈。
 
 每个模块执行时都还没 return 完成，所以 `package.loaded` 里对应模块仍然是 `"loading..."` 的状态，当 `C.lua` 再次 `require("./A")` 时，
 lua 发现 A 已经加载，但仍会尝试执行 `A.lua` 的 chunk ,于是无限循环。
 
-在业务代码中，由于复杂的业务，模块之间相互require,你可能经常遇到这种问题，不要慌，看看日志，改一改就好了，就像这样。
+在业务代码中，由于复杂的业务，模块之间相互 require ,你可能经常遇到这种问题，不要慌，看看日志，改一改就好了，就像这样。
 
 C.lua
 
@@ -282,5 +282,5 @@ end
 return CFunc;
 ```
 
-Lua加载模块时，检查 `package.loaded[name]`，如果有值且不是 nil 则直接返回这个值。如果值是true (表示正在加载中)，Lua并不会直接
-返回 true，Lua会继续执行 loader 返回的 chunk(也就是文件内容)。Lua仅仅用 true 作为“正在加载”的标记，但不阻止再次执行模块文件。
+Lua加载模块时，检查 `package.loaded[name]`，如果有值且不是 nil 则直接返回这个值。如果值是 true (表示正在加载中)，Lua 并不会直接
+返回 true，Lua 会继续执行 loader 返回的 chunk(也就是文件内容)。Lua 仅仅用 true 作为“正在加载”的标记，但不阻止再次执行模块文件。

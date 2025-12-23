@@ -155,9 +155,10 @@ void lua_plugin::reload()
     this->other_lua_state_be_reload = true;
 }
 
-void lua_plugin::on_main_init(const std::string &lua_dir, const int worker_cnt)
+void lua_plugin::on_main_init(const std::string &lua_dir, const std::string &app_id, const int worker_cnt)
 {
     this->lua_dir = lua_dir;
+    this->app_id = app_id;
 
     // init worker lua vm
     {
@@ -616,6 +617,9 @@ void lua_plugin::main_mount()
         lua_pushstring(this->lua_state, this->lua_dir.c_str());
         lua_setfield(this->lua_state, -2, "LuaDir");
 
+        lua_pushstring(this->lua_state, this->app_id.c_str());
+        lua_setfield(this->lua_state, -2, "AppID");
+
         lua_setglobal(this->lua_state, "avant");
     }
 }
@@ -633,6 +637,9 @@ void lua_plugin::worker_mount(int worker_idx)
     lua_pushstring(this->worker_lua_state[worker_idx], this->lua_dir.c_str());
     lua_setfield(this->worker_lua_state[worker_idx], -2, "LuaDir");
 
+    lua_pushstring(this->worker_lua_state[worker_idx], this->app_id.c_str());
+    lua_setfield(this->worker_lua_state[worker_idx], -2, "AppID");
+
     lua_setglobal(this->worker_lua_state[worker_idx], "avant");
 }
 
@@ -649,6 +656,9 @@ void lua_plugin::other_mount()
 
         lua_pushstring(this->other_lua_state, this->lua_dir.c_str());
         lua_setfield(this->other_lua_state, -2, "LuaDir");
+
+        lua_pushstring(this->other_lua_state, this->app_id.c_str());
+        lua_setfield(this->other_lua_state, -2, "AppID");
 
         lua_setglobal(this->other_lua_state, "avant");
     }

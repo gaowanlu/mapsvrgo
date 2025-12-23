@@ -562,7 +562,9 @@ int http_app::on_body(avant::connection::http_ctx &ctx, size_t length)
 void http_app::on_main_init(avant::server::server &server_obj)
 {
     LOG_ERROR("http_app::on_main_init");
-    utility::singleton<lua_plugin>::instance()->on_main_init(server_obj.get_config()->get_lua_dir(), server_obj.get_config()->get_worker_cnt());
+    utility::singleton<lua_plugin>::instance()->on_main_init(server_obj.get_config()->get_lua_dir(),
+                                                             server_obj.get_config()->get_app_id(),
+                                                             server_obj.get_config()->get_worker_cnt());
 }
 
 void http_app::on_worker_init(avant::workers::worker &worker_obj)

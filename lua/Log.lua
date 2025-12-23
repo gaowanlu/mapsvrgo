@@ -1,3 +1,5 @@
+---@class Log
+---@field Error function Log:Error("%s %d", str, n)
 local Log = {};
 
 function Log:Error(...)
