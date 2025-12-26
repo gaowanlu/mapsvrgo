@@ -23,7 +23,7 @@ void stream_app::on_main_init(avant::server::server &server_obj)
 
 void stream_app::on_worker_init(avant::workers::worker &worker_obj)
 {
-    LOG_ERROR("stream_app::on_worker_init %d", worker_obj.get_worker_idx());
+    LOG_ERROR("stream_app::on_worker_init {}", worker_obj.get_worker_idx());
     utility::singleton<lua_plugin>::instance()->on_worker_init(worker_obj.get_worker_idx());
 }
 
@@ -35,7 +35,7 @@ void stream_app::on_main_stop(avant::server::server &server_obj)
 
 void stream_app::on_worker_stop(avant::workers::worker &worker_obj)
 {
-    LOG_ERROR("stream_app::on_worker_stop %d", worker_obj.get_worker_idx());
+    LOG_ERROR("stream_app::on_worker_stop {}", worker_obj.get_worker_idx());
     utility::singleton<lua_plugin>::instance()->on_worker_stop(worker_obj.get_worker_idx());
 }
 
@@ -56,7 +56,7 @@ bool stream_app::on_recved_packsize(avant::connection::stream_ctx &ctx, uint64_t
 
 void stream_app::on_new_connection(avant::connection::stream_ctx &ctx)
 {
-    // LOG_ERROR("stream_app on_new_connection gid %llu", ctx.get_conn_gid());
+    // LOG_ERROR("stream_app on_new_connection gid {}", ctx.get_conn_gid());
     ProtoTunnelWorker2OtherLuaVM worker2OtherLuaVMPkg;
     worker2OtherLuaVMPkg.set_gid(ctx.get_conn_gid());
     worker2OtherLuaVMPkg.set_workeridx(ctx.get_worker_idx());
@@ -77,7 +77,7 @@ void stream_app::on_new_connection(avant::connection::stream_ctx &ctx)
 
 void stream_app::on_close_connection(avant::connection::stream_ctx &ctx)
 {
-    // LOG_ERROR("stream_app on_close_connection gid %llu", ctx.get_conn_gid());
+    // LOG_ERROR("stream_app on_close_connection gid {}", ctx.get_conn_gid());
     ProtoTunnelWorker2OtherLuaVM worker2OtherLuaVMPkg;
     worker2OtherLuaVMPkg.set_gid(ctx.get_conn_gid());
     worker2OtherLuaVMPkg.set_workeridx(ctx.get_worker_idx());
@@ -98,7 +98,7 @@ void stream_app::on_close_connection(avant::connection::stream_ctx &ctx)
 
 void stream_app::on_process_connection(avant::connection::stream_ctx &ctx)
 {
-    // LOG_ERROR("stream_app on_process_connection gid %llu", ctx.get_conn_gid());
+    // LOG_ERROR("stream_app on_process_connection gid {}", ctx.get_conn_gid());
 
     if (ctx.get_recv_buffer_size() > 2048000)
     {
@@ -145,7 +145,7 @@ void stream_app::on_process_connection(avant::connection::stream_ctx &ctx)
         ProtoPackage protoPackage;
         if (!protoPackage.ParseFromArray(ctx.get_recv_buffer_read_ptr() + sizeof(data_size), data_size))
         {
-            LOG_ERROR("stream ctx client protoPackage.ParseFromArra failed %llu", data_size);
+            LOG_ERROR("stream ctx client protoPackage.ParseFromArra failed {}", data_size);
             ctx.recv_buffer_move_read_ptr_n(sizeof(data_size) + data_size);
             break;
         }
@@ -222,14 +222,14 @@ void stream_app::on_worker_tunnel(avant::workers::worker &worker_obj, const Prot
             worker_obj.send_client_forward_message(gid, {gid}, *tunnelOtherLuaVM2WorkerConn.mutable_innerprotopackage());
         }
 
-        // LOG_ERROR("stream_app::on_worker_tunnel gid %llu worker_idx %d real_worker_idx %d cmd %d", gid, worker_idx, worker_obj.get_worker_id(), cmd);
+        // LOG_ERROR("stream_app::on_worker_tunnel gid {} worker_idx {} real_worker_idx {} cmd {}", gid, worker_idx, worker_obj.get_worker_id(), cmd);
     }
     else if (cmd == ProtoCmd::PROTO_CMD_TUNNEL_OTHER2WORKER_TEST)
     {
     }
     else
     {
-        LOG_ERROR("not exist handler %d", cmd);
+        LOG_ERROR("not exist handler {}", cmd);
     }
 }
 
@@ -242,7 +242,7 @@ void stream_app::on_client_forward_message(avant::connection::stream_ctx &ctx,
     int cmd = message.innerprotopackage().cmd();
 
     stream_app::send_sync_package(ctx, message.innerprotopackage());
-    // LOG_ERROR("on_client_forward_message cmd %d", cmd);
+    // LOG_ERROR("on_client_forward_message cmd {}", cmd);
 }
 
 void stream_app::on_cmd_reload(avant::server::server &server_obj)

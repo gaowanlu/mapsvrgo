@@ -34,7 +34,7 @@ void websocket_app::on_main_init(avant::server::server &server_obj)
 
 void websocket_app::on_worker_init(avant::workers::worker &worker_obj)
 {
-    LOG_ERROR("websocket_app::on_worker_init %d", worker_obj.get_worker_idx());
+    LOG_ERROR("websocket_app::on_worker_init {}", worker_obj.get_worker_idx());
     utility::singleton<lua_plugin>::instance()->on_worker_init(worker_obj.get_worker_idx());
 }
 
@@ -46,7 +46,7 @@ void websocket_app::on_main_stop(avant::server::server &server_obj)
 
 void websocket_app::on_worker_stop(avant::workers::worker &worker_obj)
 {
-    LOG_ERROR("websocket_app::on_worker_stop %d", worker_obj.get_worker_idx());
+    LOG_ERROR("websocket_app::on_worker_stop {}", worker_obj.get_worker_idx());
     utility::singleton<lua_plugin>::instance()->on_worker_stop(worker_obj.get_worker_idx());
 }
 
@@ -94,14 +94,14 @@ void websocket_app::on_worker_tunnel(avant::workers::worker &worker_obj, const P
             worker_obj.send_client_forward_message(gid, {gid}, *tunnelOtherLuaVM2WorkerConn.mutable_innerprotopackage());
         }
 
-        // LOG_ERROR("stream_app::on_worker_tunnel gid %llu worker_idx %d real_worker_idx %d cmd %d", gid, worker_idx, worker_obj.get_worker_id(), cmd);
+        // LOG_ERROR("stream_app::on_worker_tunnel gid {} worker_idx {} real_worker_idx {} cmd {}", gid, worker_idx, worker_obj.get_worker_id(), cmd);
     }
     else if (cmd == ProtoCmd::PROTO_CMD_TUNNEL_OTHER2WORKER_TEST)
     {
     }
     else
     {
-        LOG_ERROR("not exist handler %d", cmd);
+        LOG_ERROR("not exist handler {}", cmd);
     }
 }
 
@@ -179,7 +179,7 @@ void websocket_app::on_process_connection(avant::connection::websocket_ctx &ctx)
             }
             else
             {
-                LOG_ERROR("frame not be allowed. opcode = %d", opcode);
+                LOG_ERROR("frame not be allowed. opcode = {}", opcode);
                 ctx.set_conn_is_close(true);
                 ctx.event_mod(nullptr, event::event_poller::RWE, false);
                 break;
@@ -193,7 +193,7 @@ void websocket_app::on_process_connection(avant::connection::websocket_ctx &ctx)
         {
             if (index >= all_data_len) // need next 1 byte
             {
-                // LOG_ERROR("index[%zu] >= all_data_len[%llu]", index, all_data_len);
+                // LOG_ERROR("index[{}] >= all_data_len[{}]", index, all_data_len);
                 break;
             }
             frame.mask = (data[index] & 0x80) != 0;
@@ -207,7 +207,7 @@ void websocket_app::on_process_connection(avant::connection::websocket_ctx &ctx)
                 frame.payload_length = 0;
                 if (index + 1 >= all_data_len) // need next 2 bytes
                 {
-                    // LOG_ERROR("index[%zu] + 1 >= all_data_len[%llu]", index, all_data_len);
+                    // LOG_ERROR("index[{}] + 1 >= all_data_len[{}]", index, all_data_len);
                     break;
                 }
                 uint16_t tmp = 0;
@@ -224,7 +224,7 @@ void websocket_app::on_process_connection(avant::connection::websocket_ctx &ctx)
                 frame.payload_length = 0;
                 if (index + 7 >= all_data_len) // need next 8 bytes
                 {
-                    // LOG_ERROR("index[%zu] + 7 >= all_data_len[%llu]", index, all_data_len);
+                    // LOG_ERROR("index[{}] + 7 >= all_data_len[{}]", index, all_data_len);
                     break;
                 }
                 uint32_t tmp = 0;
@@ -250,7 +250,7 @@ void websocket_app::on_process_connection(avant::connection::websocket_ctx &ctx)
             {
                 if (index + 3 >= all_data_len) // need next 4 bytes
                 {
-                    // LOG_ERROR("index[%zu] + 3 >= all_data_len[%llu]", index, all_data_len);
+                    // LOG_ERROR("index[{}] + 3 >= all_data_len[{}]", index, all_data_len);
                     break;
                 }
                 frame.masking_key = {(uint8_t)data[index], (uint8_t)data[index + 1], (uint8_t)data[index + 2], (uint8_t)data[index + 3]};
@@ -262,7 +262,7 @@ void websocket_app::on_process_connection(avant::connection::websocket_ctx &ctx)
             // already parser (value of the index) bytes
             if (index + frame.payload_length - 1 >= all_data_len) // need next frame.playload_length bytes
             {
-                // LOG_ERROR("index[%zu] + frame.payload_length[%llu] - 1 >= all_data_len[%llu]", index, frame.payload_length, all_data_len);
+                // LOG_ERROR("index[{}] + frame.payload_length[{}] - 1 >= all_data_len[{}]", index, frame.payload_length, all_data_len);
                 break;
             }
 
@@ -323,7 +323,7 @@ void websocket_app::on_process_frame(avant::connection::websocket_ctx &ctx, cons
     ProtoPackage protoPackage;
     if (!protoPackage.ParseFromArray(ctx.frame_payload_data.c_str(), ctx.frame_payload_data.size()))
     {
-        LOG_ERROR("!protoPackage.ParseFromArray failed gid %llu", ctx.get_conn_gid());
+        LOG_ERROR("!protoPackage.ParseFromArray failed gid {}", ctx.get_conn_gid());
         ctx.frame_payload_data.clear();
         ctx.set_conn_is_close(true);
         ctx.event_mod(nullptr, event::event_poller::RWE, false);
