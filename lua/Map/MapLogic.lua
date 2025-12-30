@@ -39,7 +39,7 @@
 ---@field id integer 地图ID
 ---@field TICK_RATE integer 帧率
 ---@field DT_MS integer 每帧时间间隔 毫秒
----@field lastTickTimeMS number 执行上一次tick的毫秒时间戳
+---@field lastTickTimeMS integer 执行上一次tick的毫秒时间戳
 ---@field durationAccumulator number 帧时常累计时间毫秒
 
 ---@class MapType
@@ -56,7 +56,7 @@ local TimeMgr  = require("TimeMgrLogic")
 
 ---@class QuadTree:QuadTreeType
 local QuadTree = {
-    MAX_DEPTH = 6,   -- 最大分裂深度，超过该深度不再继续分裂，防止无限分类
+    MAX_DEPTH = 6,  -- 最大分裂深度，超过该深度不再继续分裂，防止无限分类
     MAX_OBJECTS = 0 -- 当节点对象数量超过该阈值时尝试分裂
 };
 
@@ -267,7 +267,7 @@ function Map:GetMapDbData()
     return self.MapDbData;
 end
 
----@return number
+---@return integer
 function Map:GetLastTickTimeMS()
     return self:GetMapDbData().lastTickTimeMS;
 end
@@ -479,7 +479,7 @@ function Map:PlayerPhysicsMove(mapPlayer)
     QuadTree.QtInert(self.quadTree, mapPlayer);
 end
 
----@param timeMS number
+---@param timeMS integer
 function Map:FixedUpdate(timeMS)
     local MsgHandler = require("MsgHandlerLogic")
     local PlayerMgr = require("PlayerMgrLogic")
@@ -499,6 +499,7 @@ function Map:FixedUpdate(timeMS)
 
         QuadTree.QtQuery(self.quadTree, range, list, seen)
 
+        ---@type table<integer,ProtoLua_ProtoMapPlayerPayload>
         local playersPayload = {}
         for _, o in ipairs(list) do
             ---@type MapPlayerType
@@ -509,12 +510,12 @@ function Map:FixedUpdate(timeMS)
 
             playersPayload[#playersPayload + 1] = {
                 userId = o.userId,
-                x = math.tointeger(pl.x),
-                y = math.tointeger(pl.y),
-                vX = math.tointeger(pl.vX),
-                vY = math.tointeger(pl.vY),
-                lastSeq = math.tointeger(pl.lastSeq),
-                lastClientTime = math.tointeger(pl.lastClientTime)
+                x = math.tointeger(pl.x) or 0,
+                y = math.tointeger(pl.y) or 0,
+                vX = math.tointeger(pl.vX) or 0,
+                vY = math.tointeger(pl.vY) or 0,
+                lastSeq = math.tointeger(pl.lastSeq) or 0,
+                lastClientTime = math.tointeger(pl.lastClientTime) or 0
             };
         end
 
@@ -522,6 +523,7 @@ function Map:FixedUpdate(timeMS)
             Log:Error('players playersPayload len %d', #playersPayload)
         end
 
+        ---@type ProtoLua_ProtoCSMapNotifyStateData
         local protoCSMapNotifyStateData = {
             serverTime = timeMS,
             players = playersPayload
@@ -530,7 +532,7 @@ function Map:FixedUpdate(timeMS)
         local loopPlayer = PlayerMgr.GetPlayerByUserId(userId)
         if loopPlayer ~= nil then
             MsgHandler:Send2Client(loopPlayer:GetClientGID(), loopPlayer:GetWorkerIdx(),
-                MsgHandler.ProtoCmd.PROTO_CMD_CS_MAP_NOTIFY_STATE_DATA, protoCSMapNotifyStateData);
+                ProtoLua_ProtoCmd.PROTO_CMD_CS_MAP_NOTIFY_STATE_DATA, protoCSMapNotifyStateData);
         end
     end
 end

@@ -4,18 +4,21 @@ package avant;
 
 option go_package = "/proto_res";
 
-enum DbOpType{
+enum DbOpType
+{
     OP_INSERT = 0;
     OP_REPLACE = 1;
     OP_UPDATE = 2;
     OP_DELETE = 3;
 }
 
-message DbPlayerBaseInfo{
+message DbPlayerBaseInfo
+{
     int32 level = 1;
 }
 
-message DbUserRecord{
+message DbUserRecord
+{
     DbOpType op = 1;
     int64 id = 2;
     string userId = 3;
@@ -23,28 +26,33 @@ message DbUserRecord{
     DbPlayerBaseInfo baseInfo = 5;
 }
 
-message SelectDbUserRecordReq{
+message SelectDbUserRecordReq
+{
     string where = 1;
 }
 
-message SelectDbUserRecordRes{
+message SelectDbUserRecordRes
+{
     repeated DbUserRecord userRecordList = 1;
 }
 
-message InsertDbUserRecordReq{
+message InsertDbUserRecordReq
+{
     uint64 clientGID = 1;
     int32 workerIdx = 2;
     DbUserRecord dbUserRecord = 3;
 }
 
-message InsertDbUserRecordRes{
+message InsertDbUserRecordRes
+{
     uint64 clientGID = 1;
     int32 workerIdx = 2;
     DbUserRecord dbUserRecord = 3;
     int32 ret = 4;
 }
 
-message SelectDbUserRecordLoginReq{
+message SelectDbUserRecordLoginReq
+{
     string playerId = 1;
     uint64 clientGID = 2;
     int32 workerIdx = 3;
@@ -52,7 +60,8 @@ message SelectDbUserRecordLoginReq{
     string password = 5;
 }
 
-message SelectDbUserRecordLoginRes{
+message SelectDbUserRecordLoginRes
+{
     string playerId = 1;
     uint64 clientGID = 2;
     int32 workerIdx = 3;

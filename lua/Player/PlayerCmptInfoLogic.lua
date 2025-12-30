@@ -14,7 +14,7 @@ function PlayerCmptInfo.new(owner)
     return self
 end
 
----@return DbPlayerBaseInfoType
+---@return ProtoLua_DbPlayerBaseInfo
 function PlayerCmptInfo:GetDbBaseInfoData()
     local dbUserRecord = self.owner:GetDbUserRecord();
     return dbUserRecord.baseInfo;

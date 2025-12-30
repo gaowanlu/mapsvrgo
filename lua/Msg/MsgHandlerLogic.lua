@@ -1,67 +1,21 @@
 ---@class MsgHandlerType
----@field ProtoCmd table<string,number> 协议号
 
 ---@class MsgHandler:MsgHandlerType
 local MsgHandler = require("MsgHandlerData");
+
+local proto_cmd = require("proto_cmd");
+local proto_database = require("proto_database");
+local proto_example = require("proto_example");
+local proto_ipc_stream = require("proto_ipc_stream");
+local proto_lua = require("proto_lua");
+local proto_message_head = require("proto_message_head");
+local proto_tunnel = require("proto_tunnel");
 
 local Log = require("Log")
 
 local PlayerMgr = require("PlayerMgrLogic")
 local ConfigTableMgr = require("ConfigTableMgrLogic")
 local ErrCode = require("ErrCode")
-
--- 协议号
-MsgHandler.ProtoCmd = {
-    PROTO_CMD_CS_REQ_EXAMPLE = 0,
-    PROTO_CMD_CS_RES_EXAMPLE = 1,
-    PROTO_CMD_TUNNEL_MAIN2WORKER_NEW_CLIENT = 2,
-    PROTO_CMD_TUNNEL_PACKAGE = 3,
-    PROTO_CMD_TUNNEL_CLIENT_FORWARD_MESSAGE = 4,
-    PROTO_CMD_TUNNEL_WEBSOCKET_BROADCAST = 5,
-    PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION = 6,
-    PROTO_CMD_TUNNEL_OTHER2WORKER_TEST = 7,
-    PROTO_CMD_LUA_TEST = 8,
-    PROTO_CMD_IPC_STREAM_AUTH_HANDSHAKE = 9,
-
-    PROOT_CMD_TUNNEL_WORKER2OTHER_LUAVM = 1001,
-    PROTO_CMD_TUNNEL_OTHERLUAVM2WORKERCONN = 1002,
-    PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION = 1003,
-    PROTO_CMD_TUNNEL_OTHERLUAVM2WORKER_CLOSE_CLIENT_CONNECTION = 1004,
-
-    PROTO_CMD_CS_REQ_LOGIN = 2001,
-    PROTO_CMD_CS_RES_LOGIN = 2002,
-
-    PROTO_CMD_CS_MAP_NOTIFY_INIT_DATA = 2003,
-    PROTO_CMD_CS_REQ_MAP_PING = 2004,
-    PROTO_CMD_CS_RES_MAP_PONG = 2005,
-    PROTO_CMD_CS_REQ_MAP_INPUT = 2006,
-    PROTO_CMD_CS_MAP_NOTIFY_STATE_DATA = 2007,
-    PROTO_CMD_CS_MAP_ENTER_REQ = 2008,
-    PROTO_CMD_CS_MAP_ENTER_RES = 2009,
-    PROTO_CMD_CS_MAP_LEAVE_REQ = 2010,
-    PROTO_CMD_CS_MAP_LEAVE_RES = 2011,
-
-    PROTO_CMD_CS_MAP3D_NOTIFY_INIT_DATA = 2012,
-    PROTO_CMD_CS_REQ_MAP3D_PING = 2013,
-    PROTO_CMD_CS_RES_MAP3D_PONG = 2014,
-    PROTO_CMD_CS_REQ_MAP3D_INPUT = 2015,
-    PROTO_CMD_CS_MAP3D_NOTIFY_STATE_DATA = 2016,
-    PROTO_CMD_CS_MAP3D_ENTER_REQ = 2017,
-    PROTO_CMD_CS_MAP3D_ENTER_RES = 2018,
-    PROTO_CMD_CS_MAP3D_LEAVE_REQ = 2019,
-    PROTO_CMD_CS_MAP3D_LEAVE_RES = 2020,
-
-    PROTO_CMD_DBSVRGO_WRITE_DBUSERRECORD_REQ = 3000,
-    PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_REQ = 3001,
-    PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_RES = 3002,
-
-    PROTO_CMD_CS_REQ_CREATE_USER = 3003,
-    PROTO_CMD_CS_RES_CREATE_USER = 3004,
-    PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_REQ = 3005,
-    PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_RES = 3006,
-    PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_REQ = 3007,
-    PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_RES = 3008,
-};
 
 function MsgHandler:DebugTableToString(t, indent)
     if type(t) == "string" then
@@ -118,11 +72,12 @@ end
 ---@type table<number,function>
 MsgHandler.MsgFromClientCmd2Func = {
     -- 有新的客户端连接
-    [MsgHandler.ProtoCmd.PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION] = function(playerId, clientGID,
-                                                                                               workerIdx, cmd, message)
-        if message["gid"] ~= clientGID then
+    ---@param message ProtoLua_ProtoTunnelWorker2OtherEventNewClientConnection
+    [ProtoLua_ProtoCmd.PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION] = function(playerId, clientGID,
+                                                                                             workerIdx, cmd, message)
+        if message.gid ~= clientGID then
             Log:Error('PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION message["gid"]%d ~= clientGID[%d]',
-                message["gid"], clientGID)
+                message.gid, clientGID)
             return
         end
         -- Log:Error("New Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx)
@@ -133,25 +88,28 @@ MsgHandler.MsgFromClientCmd2Func = {
 
         if player ~= nil then
             Log:Error("Fatal Player already exists for gid[%d] workerIdx[%d]", clientGID, workerIdx)
+
             -- 关闭客户端的连接
+            ---@type ProtoLua_ProtoTunnelOtherLuaVM2WorkerCloseClientConnection
             local ProtoTunnelOtherLuaVM2WorkerCloseClientConnection = {
                 gid = clientGID,
                 workerIdx = workerIdx
             };
             MsgHandler:Send2Client(clientGID, workerIdx,
-                MsgHandler.ProtoCmd.PROTO_CMD_TUNNEL_OTHERLUAVM2WORKER_CLOSE_CLIENT_CONNECTION,
+                ProtoLua_ProtoCmd.PROTO_CMD_TUNNEL_OTHERLUAVM2WORKER_CLOSE_CLIENT_CONNECTION,
                 ProtoTunnelOtherLuaVM2WorkerCloseClientConnection);
             return
         end
     end,
 
     -- 客户端连接关闭
-    [MsgHandler.ProtoCmd.PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION] = function(playerId, clientGID,
-                                                                                                 workerIdx, cmd, message)
-        if message["gid"] ~= clientGID then
+    ---@param message ProtoLua_ProtoTunnelWorker2OtherEventCloseClientConnection
+    [ProtoLua_ProtoCmd.PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION] = function(playerId, clientGID,
+                                                                                               workerIdx, cmd, message)
+        if message.gid ~= clientGID then
             Log:Error(
                 'PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION message["gid"]%d ~= clientGID[%d]',
-                message["gid"], clientGID)
+                message.gid, clientGID)
             return
         end
         -- Log:Error("Close Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx)
@@ -169,7 +127,7 @@ MsgHandler.MsgFromClientCmd2Func = {
 
                 DbUserRecord.op = 1; -- replace
                 MsgHandler:Send2IPC(avant:GetDBSvrGoAppID(),
-                    MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_WRITE_DBUSERRECORD_REQ,
+                    ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_WRITE_DBUSERRECORD_REQ,
                     DbUserRecord);
             end
         else
@@ -178,24 +136,27 @@ MsgHandler.MsgFromClientCmd2Func = {
     end,
 
     -- 示例请求处理
-    [MsgHandler.ProtoCmd.PROTO_CMD_CS_REQ_EXAMPLE] = function(playerId, clientGID, workerIdx, cmd, message)
+    ---@param message ProtoLua_ProtoCSReqExample
+    [ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_EXAMPLE] = function(playerId, clientGID, workerIdx, cmd, message)
         local player = PlayerMgr.GetPlayerByPlayerId(playerId)
 
+        ---@type ProtoLua_ProtoCSResExample
         local t = {
-            testContext = message["testContext"]
+            testContext = message.testContext
         }
 
         if player == nil then
             t.testContext = "Not Logined In";
-            MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, t)
+            MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, t)
 
             -- 关闭客户端的连接
+            ---@type ProtoLua_ProtoTunnelOtherLuaVM2WorkerCloseClientConnection
             local ProtoTunnelOtherLuaVM2WorkerCloseClientConnection = {
                 gid = clientGID,
                 workerIdx = workerIdx
             };
             MsgHandler:Send2Client(clientGID, workerIdx,
-                MsgHandler.ProtoCmd.PROTO_CMD_TUNNEL_OTHERLUAVM2WORKER_CLOSE_CLIENT_CONNECTION,
+                ProtoLua_ProtoCmd.PROTO_CMD_TUNNEL_OTHERLUAVM2WORKER_CLOSE_CLIENT_CONNECTION,
                 ProtoTunnelOtherLuaVM2WorkerCloseClientConnection);
 
             return
@@ -204,12 +165,14 @@ MsgHandler.MsgFromClientCmd2Func = {
         -- Log:Error("Recv Player from clientGID[%d] workerIdx[%d] PROTO_CMD_CS_REQ_EXAMPLE message: %s", clientGID,
         --     workerIdx, self:DebugTableToString(message));
 
-        t.testContext = message["testContext"];
-        MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, t)
+        t.testContext = message.testContext;
+
+        MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, t)
     end,
 
     -- 登录请求处理
-    [MsgHandler.ProtoCmd.PROTO_CMD_CS_REQ_LOGIN] = function(playerId, clientGID, workerIdx, cmd, message)
+    ---@param message ProtoLua_ProtoCSReqLogin
+    [ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_LOGIN] = function(playerId, clientGID, workerIdx, cmd, message)
         -- 检查其是否有了玩家对象 有玩家对象的肯定是重复登录了
         local player = PlayerMgr.GetPlayerByPlayerId(playerId)
         if player ~= nil then
@@ -221,26 +184,28 @@ MsgHandler.MsgFromClientCmd2Func = {
         --     workerIdx, self:DebugTableToString(message));
 
         -- 查userId是否已经有了玩家对象 有的话说明重复登录了
-        local playerByUserId = PlayerMgr.GetPlayerByUserId(message["userId"])
+        local playerByUserId = PlayerMgr.GetPlayerByUserId(message.userId)
         if playerByUserId ~= nil then
-            Log:Error("UserId[%s] already logged in", message["userId"])
+            Log:Error("UserId[%s] already logged in", message.userId)
             return
         end
 
+        ---@type ProtoLua_SelectDbUserRecordLoginReq
         local selectDbUserRecordLoginReq = {
             playerId = playerId,
             clientGID = clientGID,
             workerIdx = workerIdx,
-            userId = message["userId"],
-            password = message["password"]
+            userId = message.userId,
+            password = message.password
         };
 
-        MsgHandler:Send2IPC(avant:GetDBSvrGoAppID(), MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_REQ,
+        MsgHandler:Send2IPC(avant:GetDBSvrGoAppID(), ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_REQ,
             selectDbUserRecordLoginReq);
     end,
 
     -- PROTO_CMD_CS_REQ_MAP_PING 地图内客户端心跳请求
-    [MsgHandler.ProtoCmd.PROTO_CMD_CS_REQ_MAP_PING] = function(playerId, clientGID, workerIdx, cmd, message)
+    ---@param message ProtoLua_ProtoCSReqMapPing
+    [ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_MAP_PING] = function(playerId, clientGID, workerIdx, cmd, message)
         local player = PlayerMgr.GetPlayerByPlayerId(playerId);
         if player == nil then
             return
@@ -248,14 +213,18 @@ MsgHandler.MsgFromClientCmd2Func = {
 
         local serverTimeMS = player:GetComponents().map:PingReq();
 
-        MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_MAP_PONG, {
+        ---@type ProtoLua_ProtoCSResMapPong
+        local res = {
             clientTime = message.clientTime,
             serverTime = serverTimeMS
-        });
+        }
+
+        MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_MAP_PONG, res);
     end,
 
     --- ROTO_CMD_CS_REQ_MAP_INPUT 地图内客户端上报输入
-    [MsgHandler.ProtoCmd.PROTO_CMD_CS_REQ_MAP_INPUT] = function(playerId, clientGID, workerIdx, cmd, message)
+    ---@param message ProtoLua_ProtoCSReqMapInput
+    [ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_MAP_INPUT] = function(playerId, clientGID, workerIdx, cmd, message)
         local player = PlayerMgr.GetPlayerByPlayerId(playerId);
         if player == nil then
             return
@@ -265,32 +234,43 @@ MsgHandler.MsgFromClientCmd2Func = {
     end,
 
     --- PROTO_CMD_CS_MAP_ENTER_REQ 进入地图请求
-    [MsgHandler.ProtoCmd.PROTO_CMD_CS_MAP_ENTER_REQ] = function(playerId, clientGID, workerIdx, cmd, message)
+    ---@param message ProtoLua_ProtoCSMapEnterReq
+    [ProtoLua_ProtoCmd.PROTO_CMD_CS_MAP_ENTER_REQ] = function(playerId, clientGID, workerIdx, cmd, message)
         local player = PlayerMgr.GetPlayerByPlayerId(playerId);
         if player == nil then
             return
         end
         local enterMapRet = player:GetComponents().map:MapEnterReq(message.mapId);
-        MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_MAP_ENTER_RES, {
+
+        ---@type ProtoLua_ProtoCSMapEnterRes
+        local res = {
             ret = enterMapRet,
             mapId = message.mapId
-        });
+        }
+
+        MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_MAP_ENTER_RES, res);
     end,
 
     --- PROTO_CMD_CS_MAP_LEAVE_REQ 离开地图请求
-    [MsgHandler.ProtoCmd.PROTO_CMD_CS_MAP_LEAVE_REQ] = function(playerId, clientGID, workerIdx, cmd, message)
+    ---@param message ProtoLua_ProtoCSMapLeaveReq
+    [ProtoLua_ProtoCmd.PROTO_CMD_CS_MAP_LEAVE_REQ] = function(playerId, clientGID, workerIdx, cmd, message)
         local player = PlayerMgr.GetPlayerByPlayerId(playerId);
         if player == nil then
             return
         end
         local leaveMapRet = player:GetComponents().map:MapLeaveReq();
-        MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_MAP_LEAVE_RES, {
+
+        ---@type ProtoLua_ProtoCSMapLeaveRes
+        local res = {
             ret = leaveMapRet
-        });
+        };
+
+        MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_MAP_LEAVE_RES, res);
     end,
 
     --- PROTO_CMD_CS_REQ_MAP3D_PING 地图3D内心跳请求
-    [MsgHandler.ProtoCmd.PROTO_CMD_CS_REQ_MAP3D_PING] = function(playerId, clientGID, workerIdx, cmd, message)
+    ---@param message ProtoLua_ProtoCSReqMap3DPing
+    [ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_MAP3D_PING] = function(playerId, clientGID, workerIdx, cmd, message)
         local player = PlayerMgr.GetPlayerByPlayerId(playerId);
         if player == nil then
             return
@@ -298,14 +278,18 @@ MsgHandler.MsgFromClientCmd2Func = {
 
         local serverTimeMS = player:GetComponents().map3d:PingReq();
 
-        MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_MAP3D_PONG, {
+        ---@type ProtoLua_ProtoCSResMap3DPong
+        local res = {
             clientTime = message.clientTime,
             serverTime = serverTimeMS
-        });
+        };
+
+        MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_MAP3D_PONG, res);
     end,
 
     --- PROTO_CMD_CS_REQ_MAP3D_INPUT 地图3D内客户端上报输入
-    [MsgHandler.ProtoCmd.PROTO_CMD_CS_REQ_MAP3D_INPUT] = function(playerId, clientGID, workerIdx, cmd, message)
+    ---@param message ProtoLua_ProtoCSReqMap3DInput
+    [ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_MAP3D_INPUT] = function(playerId, _clientGID, _workerIdx, _cmd, message)
         local player = PlayerMgr.GetPlayerByPlayerId(playerId);
         if player == nil then
             return
@@ -315,31 +299,43 @@ MsgHandler.MsgFromClientCmd2Func = {
     end,
 
     --- PROTO_CMD_CS_MAP3D_ENTER_REQ 进入地图3D请求
-    [MsgHandler.ProtoCmd.PROTO_CMD_CS_MAP3D_ENTER_REQ] = function(playerId, clientGID, workerIdx, cmd, message)
+    ---@param message ProtoLua_ProtoCSMap3DEnterReq
+    [ProtoLua_ProtoCmd.PROTO_CMD_CS_MAP3D_ENTER_REQ] = function(playerId, clientGID, workerIdx, cmd, message)
         local player = PlayerMgr.GetPlayerByPlayerId(playerId);
         if player == nil then
             return
         end
+
         local enterMapRet = player:GetComponents().map3d:MapEnterReq(message.mapId);
-        MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_MAP3D_ENTER_RES, {
+
+        ---@type ProtoLua_ProtoCSMap3DEnterRes
+        local res = {
             ret = enterMapRet,
             mapId = message.mapId
-        });
+        };
+
+        MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_MAP3D_ENTER_RES, res);
     end,
 
     --- PROTO_CMD_CS_MAP3D_LEAVE_REQ 离开地图3D请求
-    [MsgHandler.ProtoCmd.PROTO_CMD_CS_MAP3D_LEAVE_REQ] = function(playerId, clientGID, workerIdx, cmd, message)
+    ---@param message ProtoLua_ProtoCSMap3DLeaveReq
+    [ProtoLua_ProtoCmd.PROTO_CMD_CS_MAP3D_LEAVE_REQ] = function(playerId, clientGID, workerIdx, cmd, message)
         local player = PlayerMgr.GetPlayerByPlayerId(playerId);
         if player == nil then
             return
         end
         local leaveMapRet = player:GetComponents().map3d:MapLeaveReq();
-        MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_MAP3D_LEAVE_RES, {
+
+        ---@type ProtoLua_ProtoCSMap3DLeaveRes
+        local res = {
             ret = leaveMapRet
-        });
+        }
+
+        MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_MAP3D_LEAVE_RES, res);
     end,
 
-    [MsgHandler.ProtoCmd.PROTO_CMD_CS_REQ_CREATE_USER] = function(playerId, clientGID, workerIdx, cmd, message)
+    ---@param message ProtoLua_ProtoCSReqCreateUser
+    [ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_CREATE_USER] = function(playerId, clientGID, workerIdx, cmd, message)
         local ret = ErrCode.OK;
         if #message.userId <= 0 or #message.userId > 64 then
             ret = ErrCode.ERR_USERID_INPUT_INVALID;
@@ -348,16 +344,24 @@ MsgHandler.MsgFromClientCmd2Func = {
             ret = ErrCode.ERR_PASSWORD_INPUT_INVALID;
         end
         if ret ~= ErrCode.OK then
-            return MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER, {
-                ret = ret
-            });
+            ---@type ProtoLua_ProtoCSResCreateUser
+            local res = {
+                ret = ret,
+                userId = "",
+                password = "",
+                userRecordID = 0
+            };
+
+            return MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER, res);
         end
 
         local TimeMgr = require("TimeMgrLogic");
 
+        ---@type ProtoLua_InsertDbUserRecordReq
         local insertDbUserRecordReq = {
             clientGID = clientGID,
             workerIdx = workerIdx,
+            ---@diagnostic disable-next-line: missing-fields
             dbUserRecord = {
                 id = TimeMgr.GetMS(),
                 userId = message.userId,
@@ -366,7 +370,7 @@ MsgHandler.MsgFromClientCmd2Func = {
         };
 
         MsgHandler:Send2IPC(avant:GetDBSvrGoAppID(),
-            MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_REQ, insertDbUserRecordReq);
+            ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_REQ, insertDbUserRecordReq);
     end
 
 };
@@ -374,12 +378,13 @@ MsgHandler.MsgFromClientCmd2Func = {
 --- 客户端来新消息了
 ---@param clientGID number 客户端连接gid
 ---@param workerIdx number 客户端连接所在worker下标
----@param cmd number 协议号
+---@param cmd integer 协议号
 ---@param message table protobufMessage
 function MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message)
     local playerId = tostring(clientGID) .. "_" .. tostring(workerIdx);
 
     -- 执行对应的 handler（默认什么都不做）
+    ---@type any
     local fn = MsgHandler.MsgFromClientCmd2Func[cmd]
     if fn ~= nil then
         return fn(playerId, clientGID, workerIdx, cmd, message)
@@ -387,20 +392,23 @@ function MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message)
 end
 
 --- 其他进程来新消息了
----@param cmd number 协议号
----@param message table 协议
+---@param cmd integer 协议号
+---@param message_from_other table 协议
 ---@param app_id string 从哪个进程appid来的消息
-function MsgHandler:HandlerMsgFromOther(cmd, message, app_id)
+function MsgHandler:HandlerMsgFromOther(cmd, message_from_other, app_id)
     local handlers = {
-        [MsgHandler.ProtoCmd.PROTO_CMD_CS_REQ_EXAMPLE] = function()
+        ---@param message ProtoLua_ProtoCSReqExample
+        [ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_EXAMPLE] = function(message)
+            ---@type ProtoLua_ProtoCSResExample
             local t = {
                 testContext = message["testContext"]
             }
             -- 原逻辑是 Send2IPC 但发送的是 message，而不是 t
-            self:Send2IPC(app_id, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, message)
+            self:Send2IPC(app_id, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, message)
         end,
 
-        [MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_RES] = function()
+        ---@param message ProtoLua_SelectDbUserRecordRes
+        [ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_RES] = function(message)
             local Debug = require("DebugLogic");
 
             local str = Debug:DebugTableToString(message)
@@ -409,7 +417,9 @@ function MsgHandler:HandlerMsgFromOther(cmd, message, app_id)
             end
         end,
 
-        [MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_RES] = function()
+        ---@param message ProtoLua_InsertDbUserRecordRes
+        [ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_RES] = function(message)
+            ---@type ProtoLua_ProtoCSResCreateUser
             local protoCSResCreateUser = {
                 ret = message.ret,
                 userId = message.dbUserRecord.userId,
@@ -418,28 +428,28 @@ function MsgHandler:HandlerMsgFromOther(cmd, message, app_id)
             };
 
             self:Send2Client(message.clientGID, message.workerIdx,
-                MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER, protoCSResCreateUser);
+                ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER, protoCSResCreateUser);
         end,
 
-        [MsgHandler.ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_RES] = function()
-            local selectDbUserRecordLoginRes = message;
-
+        ---@param message ProtoLua_SelectDbUserRecordLoginRes
+        [ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_RES] = function(message)
             Log:Error("login callback %s", self:DebugTableToString(message))
 
-            local playerId = selectDbUserRecordLoginRes.playerId;
-            local clientGID = selectDbUserRecordLoginRes.clientGID;
-            local workerIdx = selectDbUserRecordLoginRes.workerIdx;
-            local userId = selectDbUserRecordLoginRes.userId;
+            local playerId = message.playerId;
+            local clientGID = message.clientGID;
+            local workerIdx = message.workerIdx;
+            local userId = message.userId;
 
             -- 判断密码是否正确
+            ---@type ProtoLua_ProtoCSResLogin
             local protoCSResLogin = {
                 ret = ErrCode.OK,
-                sessionId = selectDbUserRecordLoginRes.playerId
+                sessionId = message.playerId
             };
 
-            if selectDbUserRecordLoginRes.ret ~= 0 then
+            if message.ret ~= 0 then
                 protoCSResLogin.ret = ErrCode.ERR_USERID_OR_PASSWORD_NOTMATCH;
-            elseif selectDbUserRecordLoginRes.password ~= selectDbUserRecordLoginRes.userRecord.password then
+            elseif message.password ~= message.userRecord.password then
                 protoCSResLogin.ret = ErrCode.ERR_USERID_OR_PASSWORD_NOTMATCH;
             elseif not PlayerMgr.IsPlayerIdOnline(playerId) then
                 Log:Error("Login callback playerId %s not online", playerId);
@@ -463,43 +473,46 @@ function MsgHandler:HandlerMsgFromOther(cmd, message, app_id)
                 createPlayer:SetClientGID(clientGID)
                 createPlayer:SetWorkerIdx(workerIdx)
 
-                MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_LOGIN, protoCSResLogin);
+                MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_LOGIN, protoCSResLogin);
 
-                ---@type DbUserRecordType
-                local dbUserRecord = selectDbUserRecordLoginRes.userRecord;
+                ---@type ProtoLua_DbUserRecord
+                local dbUserRecord = message.userRecord;
                 -- 将数据库玩家数据赋值到其Player对象上
                 createPlayer:OnLogin(dbUserRecord)
                 return;
             end
 
-            MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_LOGIN, protoCSResLogin);
+            MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_LOGIN, protoCSResLogin);
         end,
     }
 
+    ---@type any
     local fn = handlers[cmd]
-    if fn then
-        return fn()
+    if fn ~= nil then
+        return fn(message_from_other)
     end
 end
 
 --- 接收到了新的UDP消息
 ---@param cmd number 协议号
----@param message table 协议
+---@param message_from_udp table 协议
 ---@param ip string UDP客户端的IP
 ---@param port number UDP客户端的端口
-function MsgHandler:HandlerMsgFromUDP(cmd, message, ip, port)
+function MsgHandler:HandlerMsgFromUDP(cmd, message_from_udp, ip, port)
     local handlers = {
-        [MsgHandler.ProtoCmd.PROTO_CMD_CS_REQ_EXAMPLE] = function()
+        ---@param message ProtoLua_ProtoCSReqExample
+        [ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_EXAMPLE] = function(message)
             local t = {
                 testContext = message["testContext"]
             }
-            self:Send2UDP(ip, port, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, t);
+            self:Send2UDP(ip, port, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, t);
         end
     }
 
+    ---@type any
     local fn = handlers[cmd]
-    if fn then
-        return fn()
+    if fn ~= nil then
+        return fn(message_from_udp)
     end
 end
 

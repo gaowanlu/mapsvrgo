@@ -7,6 +7,7 @@ package.path = avant.LuaDir .. "/Msg/?.lua;" .. package.path
 package.path = avant.LuaDir .. "/ConfigTable/?.lua;" .. package.path
 package.path = avant.LuaDir .. "/Time/?.lua;" .. package.path
 package.path = avant.LuaDir .. "/ErrCode/?.lua;" .. package.path
+package.path = avant.LuaDir .. "/ProtoLua/?.lua;" .. package.path
 
 local avant = require("Avant")
 local Log = require("Log")

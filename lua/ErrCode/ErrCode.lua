@@ -1,4 +1,4 @@
----@class ErrCode table<string,number>
+---@class ErrCode table<string,integer>
 local ErrCode = {
     ERR_UNKNOW = -1,
     OK = 0,

@@ -8,6 +8,7 @@ RUN apt update
 RUN apt install cmake g++ make git -y
 RUN apt install protobuf-compiler libprotobuf-dev  -y
 RUN apt install libssl-dev -y
+RUN apt install -y nodejs npm
 
 WORKDIR /mapsvrgo
 RUN git clone https://github.com/mfavant/avant.git avant_dir
@@ -15,6 +16,9 @@ RUN git clone https://github.com/mfavant/avant.git avant_dir
 WORKDIR /mapsvrgo/
 RUN chmod +x ./*.sh
 RUN ./copy_mapsvr2avant.sh
+
+WORKDIR /mapsvrgo
+RUN node ./generate_lua.js ./protocol/ ./lua/ProtoLua/
 
 WORKDIR /mapsvrgo/avant_dir
 RUN rm -rf CMakeCache.txt \

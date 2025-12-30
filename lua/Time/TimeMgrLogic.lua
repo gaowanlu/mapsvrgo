@@ -13,7 +13,7 @@ function TimeMgr.GetUS()
     return nanoseconds // 1000
 end
 
----@return number 返回毫秒时间戳
+---@return integer 返回毫秒时间戳
 function TimeMgr.GetMS()
     local seconds, nanoseconds = avant.HighresTime()
     return nanoseconds // 1000000

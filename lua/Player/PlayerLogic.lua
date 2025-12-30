@@ -22,17 +22,10 @@
 ---@class DbPlayerBaseInfoType
 ---@field level integer
 
----@class DbUserRecordType
----@field op integer
----@field id integer
----@field userId string
----@field password string
----@field baseInfo DbPlayerBaseInfoType
-
 ---@class PlayerType
 ---@field RoleDbData RoleDbDataType
 ---@field components PlayerComponentsType
----@field DbUserRecord DbUserRecordType|nil mysql玩家数据
+---@field DbUserRecord ProtoLua_DbUserRecord|nil mysql玩家数据
 
 ---@class Player:PlayerType
 local Player = require("PlayerData");
@@ -98,7 +91,7 @@ function Player:GetPlayerID()
     return self:GetRoleDbData().id
 end
 
----@return DbUserRecordType
+---@return ProtoLua_DbUserRecord
 function Player:GetDbUserRecord()
     return self.DbUserRecord
 end
@@ -151,7 +144,7 @@ function Player:OnTick()
     end
 end
 
----@param DbUserRecord DbUserRecordType
+---@param DbUserRecord ProtoLua_DbUserRecord
 function Player:OnLogin(DbUserRecord)
     self.DbUserRecord = DbUserRecord;
     for _, comp in pairs(self.components) do

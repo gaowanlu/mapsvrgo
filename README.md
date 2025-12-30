@@ -55,6 +55,18 @@ void lua_plugin::init_message_factory()
 }
 ```
 
+我们非常需要 proto 文件定义的类型，能够自动生成 lua 的类型注释，以及支持枚举。generate_lua.js 可以帮我们做到，将 proto 文件夹下的所有 proto 文件 生成对应的 lua 文件到 `lua/ProtoLua/` 下。然后在程序中 require 生效, 如 `MsgHandloerLogic.lua`。通过EmmyLua插件，很轻松的可以做到类型字段提示，以及类型勘误。
+
+```lua
+local proto_cmd = require("proto_cmd");
+local proto_database = require("proto_database");
+local proto_example = require("proto_example");
+local proto_ipc_stream = require("proto_ipc_stream");
+local proto_lua = require("proto_lua");
+local proto_message_head = require("proto_message_head");
+local proto_tunnel = require("proto_tunnel");
+```
+
 ## 协议处理
 
 lua 中的协议处理在，MsgHandlerLogic.lua 中。

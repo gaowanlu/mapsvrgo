@@ -23,7 +23,7 @@
 ---@field id integer 地图ID
 ---@field TICK_RATE integer 帧率
 ---@field DT_MS integer 每帧时间间隔 毫秒
----@field lastTickTimeMS number 执行上一次tick的毫秒时间戳
+---@field lastTickTimeMS integer 执行上一次tick的毫秒时间戳
 ---@field durationAccumulator number 帧时常累计时间毫秒
 ---@field size Vec3i 地图大小
 
@@ -55,7 +55,7 @@ local TimeMgr = require("TimeMgrLogic");
 
 ---@class Octree:OctreeType
 local Octree = {
-    MAX_DEPTH = 6,    -- 最大分裂深度
+    MAX_DEPTH = 6,   -- 最大分裂深度
     MAX_OBJECTS = 0, -- 节点最多对象数
 };
 
@@ -264,7 +264,7 @@ function Map3D:GetMapDbData()
     return self.MapDbData;
 end
 
----@return number
+---@return integer
 function Map3D:GetLastTickTimeMS()
     return self:GetMapDbData().lastTickTimeMS;
 end
@@ -340,8 +340,8 @@ function Map3D:PlayerJoinMap(playerId, userId)
         dir = { x = 0, y = 0, z = 0 },
         speedRatio = 1000,
         maxSpeed = 0.05, -- 最大速度 目标最大速度 px/ms 100px/s
-        accel = 1,      -- 加速度 px/ms^2
-        friction = 1.0, -- 无摩擦
+        accel = 1,       -- 加速度 px/ms^2
+        friction = 1.0,  -- 无摩擦
         bodyRadius = 12,
         octree = nil
     };
@@ -527,7 +527,7 @@ function Map3D:PlayerPhysicsMove(mapPlayer)
     Octree.OcInsert(self.octree, mapPlayer);
 end
 
----@param timeMS number
+---@param timeMS integer
 function Map3D:FixedUpdate(timeMS)
     local MsgHandler = require("MsgHandlerLogic")
     local PlayerMgr = require("PlayerMgrLogic")
@@ -544,6 +544,7 @@ function Map3D:FixedUpdate(timeMS)
         local seen = {};
         Octree.OcQuery(self.octree, range, list, seen);
 
+        ---@type table<integer, ProtoLua_ProtoMap3DPlayerPayload>
         local playersPayload = {}
         for _, o in ipairs(list) do
             ---@type Map3DPlayerType
@@ -551,14 +552,14 @@ function Map3D:FixedUpdate(timeMS)
 
             playersPayload[#playersPayload + 1] = {
                 userId = pl.userId,
-                x = math.tointeger(pl.pos.x),
-                y = math.tointeger(pl.pos.y),
-                z = math.tointeger(pl.pos.z),
-                vX = math.tointeger(pl.v.x),
-                vY = math.tointeger(pl.v.y),
-                vZ = math.tointeger(pl.v.z),
-                lastSeq = math.tointeger(pl.lastSeq),
-                lastClientTime = math.tointeger(pl.lastClientTime)
+                x = math.tointeger(pl.pos.x) or 0,
+                y = math.tointeger(pl.pos.y) or 0,
+                z = math.tointeger(pl.pos.z) or 0,
+                vX = math.tointeger(pl.v.x) or 0,
+                vY = math.tointeger(pl.v.y) or 0,
+                vZ = math.tointeger(pl.v.z) or 0,
+                lastSeq = math.tointeger(pl.lastSeq) or 0,
+                lastClientTime = math.tointeger(pl.lastClientTime) or 0
             };
         end
 
@@ -566,6 +567,7 @@ function Map3D:FixedUpdate(timeMS)
             Log:Error('players playersPayload len %d', #playersPayload)
         end
 
+        ---@type ProtoLua_ProtoCSMap3DNotifyStateData
         local protoCSMap3DNotifyStateData = {
             serverTime = timeMS,
             players = playersPayload
@@ -574,7 +576,7 @@ function Map3D:FixedUpdate(timeMS)
         local loopPlayer = PlayerMgr.GetPlayerByUserId(userId)
         if loopPlayer ~= nil then
             MsgHandler:Send2Client(loopPlayer:GetClientGID(), loopPlayer:GetWorkerIdx(),
-                MsgHandler.ProtoCmd.PROTO_CMD_CS_MAP3D_NOTIFY_STATE_DATA, protoCSMap3DNotifyStateData);
+                ProtoLua_ProtoCmd.PROTO_CMD_CS_MAP3D_NOTIFY_STATE_DATA, protoCSMap3DNotifyStateData);
         end
     end
 end

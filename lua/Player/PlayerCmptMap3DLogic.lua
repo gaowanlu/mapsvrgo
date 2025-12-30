@@ -51,7 +51,7 @@ function PlayerCmptMap3D:LeaveCurrMap()
 end
 
 ---@param mapId integer
----@return number
+---@return integer
 function PlayerCmptMap3D:EnterNewMap(mapId)
     local map = Map3DMgr.GetMap(mapId);
     if map == nil then
@@ -72,11 +72,12 @@ function PlayerCmptMap3D:EnterNewMap(mapId)
     self.nowMapId = mapId;
 
     -- 进地图直接发一次Map3DInitData PROTO_CMD_CS_MAP3D_NOTIFY_INIT_DATA
+    ---@type ProtoLua_ProtoCSMap3DNotifyInitData
     local protoCSMap3DNotifyInitData = {
         userId = self:GetPlayer():GetUserId(),
-        x = mapPlayer.pos.x,
-        y = mapPlayer.pos.y,
-        z = mapPlayer.pos.z,
+        x = math.ceil(mapPlayer.pos.x),
+        y = math.ceil(mapPlayer.pos.y),
+        z = math.ceil(mapPlayer.pos.z),
         serverTime = map:GetLastTickTimeMS(),
         xSize = map:GetSize().x,
         ySize = map:GetSize().y,
@@ -86,13 +87,13 @@ function PlayerCmptMap3D:EnterNewMap(mapId)
 
     local MsgHandler = require("MsgHandlerLogic");
     MsgHandler:Send2Client(self:GetPlayer():GetClientGID(), self:GetPlayer():GetWorkerIdx(),
-        MsgHandler.ProtoCmd.PROTO_CMD_CS_MAP3D_NOTIFY_INIT_DATA, protoCSMap3DNotifyInitData);
+        ProtoLua_ProtoCmd.PROTO_CMD_CS_MAP3D_NOTIFY_INIT_DATA, protoCSMap3DNotifyInitData);
 
     return ErrCode.OK;
 end
 
 ---@param mapId integer
----@return number
+---@return integer
 function PlayerCmptMap3D:MapEnterReq(mapId)
     -- 只要请求加入地图就离开当前地图
     self:LeaveCurrMap();
@@ -100,13 +101,13 @@ function PlayerCmptMap3D:MapEnterReq(mapId)
     return self:EnterNewMap(mapId);
 end
 
----@return number
+---@return integer
 function PlayerCmptMap3D:MapLeaveReq()
     self:LeaveCurrMap();
     return ErrCode.OK;
 end
 
----@return number
+---@return integer
 function PlayerCmptMap3D:PingReq()
     if self:HasInMap() then
         local currMap = Map3DMgr.GetMap(self.nowMapId);
@@ -118,6 +119,7 @@ function PlayerCmptMap3D:PingReq()
     return TimeMgr.GetMS();
 end
 
+---@param message ProtoLua_ProtoCSReqMap3DInput
 function PlayerCmptMap3D:MapInputReq(message)
     -- 如果目前没有加入任何地图则直接拒绝处理
     if false == self:HasInMap() then
