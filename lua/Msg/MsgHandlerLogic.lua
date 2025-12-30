@@ -465,8 +465,10 @@ function MsgHandler:HandlerMsgFromOther(cmd, message, app_id)
 
                 MsgHandler:Send2Client(clientGID, workerIdx, MsgHandler.ProtoCmd.PROTO_CMD_CS_RES_LOGIN, protoCSResLogin);
 
+                ---@type DbUserRecordType
+                local dbUserRecord = selectDbUserRecordLoginRes.userRecord;
                 -- 将数据库玩家数据赋值到其Player对象上
-                createPlayer:OnLogin(selectDbUserRecordLoginRes.userRecord)
+                createPlayer:OnLogin(dbUserRecord)
                 return;
             end
 

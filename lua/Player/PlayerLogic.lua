@@ -1,8 +1,5 @@
 -- PlayerLogic.lua logic script, reloadable
 
----@class RoleDbDataInfoType
----@field level number 玩家等级
-
 ---@class RoleDbDataBagType
 ---@field items table<number,number>
 
@@ -20,13 +17,22 @@
 ---@field name string 用户名称
 ---@field x number
 ---@field y number
----@field Info RoleDbDataInfoType
 ---@field Bag RoleDbDataBagType
+
+---@class DbPlayerBaseInfoType
+---@field level integer
+
+---@class DbUserRecordType
+---@field op integer
+---@field id integer
+---@field userId string
+---@field password string
+---@field baseInfo DbPlayerBaseInfoType
 
 ---@class PlayerType
 ---@field RoleDbData RoleDbDataType
 ---@field components PlayerComponentsType
----@field DbUserRecord table|nil mysql玩家数据
+---@field DbUserRecord DbUserRecordType|nil mysql玩家数据
 
 ---@class Player:PlayerType
 local Player = require("PlayerData");
@@ -55,14 +61,8 @@ function Player.new(playerId)
         name = "Player_" .. tostring(playerId),
         x = 0,
         y = 0,
-        Info = { level = 0 },
         Bag = { items = {} }
     };
-
-    -- PlayerCmptInfo 组件数据
-    self.RoleDbData.Info = {
-        level = 111
-    }
 
     -- PlayerCmptBag 组件数据
     self.RoleDbData.Bag = {
@@ -98,7 +98,7 @@ function Player:GetPlayerID()
     return self:GetRoleDbData().id
 end
 
----@return table|nil
+---@return DbUserRecordType
 function Player:GetDbUserRecord()
     return self.DbUserRecord
 end
@@ -134,11 +134,6 @@ function Player:SetUserId(userId)
 end
 
 function Player:OnTick()
-    local userConfig = ConfigTableMgr.UserConfigs:get(self:GetUserId())
-    if userConfig ~= nil then
-        -- Log:Error("PlayerOnTick userConfig %s", userConfig.userName)
-    end
-
     -- Log:Error("PlayerId %s", self:GetRoleDbData().id)
     self.RoleDbData.x = self.RoleDbData.x + 1
     self.RoleDbData.y = self.RoleDbData.y + 1
@@ -149,14 +144,14 @@ function Player:OnTick()
         self.RoleDbData.y = 0
     end
 
-    -- Log:Error("=>PlayerOnTick playerId %s x %d y %d level %d", self.RoleDbData.id, self.RoleDbData.x, self.RoleDbData.y,
-    --     self.RoleDbData.Info.level)
+    -- Log:Error("=>PlayerOnTick playerId %s x %d y %d ", self.RoleDbData.id, self.RoleDbData.x, self.RoleDbData.y)
 
     for _, comp in pairs(self.components) do
         comp:OnTick()
     end
 end
 
+---@param DbUserRecord DbUserRecordType
 function Player:OnLogin(DbUserRecord)
     self.DbUserRecord = DbUserRecord;
     for _, comp in pairs(self.components) do

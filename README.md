@@ -1,10 +1,10 @@
 # MapSvr
 
-基于 [mfavant/avant](https://github.com/mfavant/avant) 魔改的游戏服务器框架。支持无感不停服热更新、TCP Stream、UDP、WebSocket、多进程交互。
+运行在 [@mfavant/avant](https://github.com/mfavant/avant) 的游戏服务器框架。支持无感不停服逻辑热更新、支持客户端通过 TCP、UDP、WebSocket 连接服务器。服务器进程之间支持通过 TCP 收发协议交互。协议描述同一使用 [@protocolbuffers/protobuf](https://github.com/protocolbuffers/protobuf)。
 
-## 如何构建
+## 如何构建项目
 
-请参考 Dockerfile 镜像构建过程。
+请参考此项目下的 Dockerfile 镜像构建过程。
 
 ## 配置文件
 
@@ -12,9 +12,11 @@
 
 任务类型 可选 TCP Stream 与 WebSocket。
 
-## 添加新协议
+## 如何添加新协议
 
-项目的 proto 文件放在 protocol 目录下，加过新协议需要去 lua_plugin.cpp 处理, 写新的 Cmd 对应 Message 的构造工厂。这样在 avant 接收到已经注册的协议时会将 C++ Protobuf 消息转为 lua table 后传给 luaVM 处理。
+有两个很重要的概念，协议 + 异步，进程间的交互同一采用收发协议方式，收发协议是异步的。
+
+proto 文件放在 protocol 目录下，加过新协议需要去 lua_plugin.cpp 处理, 写新的 Cmd 对应 Message 的构造工厂。这样在 avant 接收到已经注册的协议时会将 C++ Protobuf 消息转为 lua table 后传给 luaVM 处理。
 
 同理 luaVM 内发送 lua table 给 C++ 会将其转为 C++ Protobuf 消息。
 
@@ -64,16 +66,32 @@ lua 中的协议处理在，MsgHandlerLogic.lua 中。
 * `MsgHandler:Send2IPC` 发送协议包给目标其他进程。
 * `MsgHandler:Send2Client` 发送协议包给目标客户端连接，客户端连接可能是 WebSocket 或 TCP 连接。
 
-## 关于dbsvrgo
+## 关于 dbsvrgo
 
-是基于 avant TCP 进程交互由 Golang 写的数据库操作，达到异步数据库操作。
+基于 avant TCP 进程交互由 Golang 写的数据库操作，将所有的 DB 操作都写在 dbsvrgo 进程上，lua 游戏逻辑服务器通过收发协议与 dbsvrgo 交互达到异步操作数据库。
 
 ```bash
 avant(MapSvrGo luaVM) <---- TCP Protobuf ----> dbsvrgo(MySQL)
   appId: 1.1.1.1                               appId: 1.1.2.1
 ```
 
-## 调试 Lua
+## 如何正确地停服
+
+请定制自己的 UDP 协议，停止进程前发送自己的UDP停服协议，处理一些必要逻辑 如将所有 Player 强制下线，保存所有 Player 的 DB 数据，禁止让新的玩家登入等。
+
+## 如何热更 Logic
+
+在不停止进程的情况下，像进程发送信号, `MapSvr.OnReload` 将会被触发。信号触发方式是 avant 框架直接规定的。
+
+```bash
+kill -10 PID
+```
+
+`MapSvr.OnReload` 内部会将我们指定的 Logic 文件重新进行 Load。
+
+一旦 OnReload 出错，更新过脚本内容后存在错误，将会直接使得进程崩溃，这是非常危险的操作，非必要情况下我们不应该考虑使用它。例如导致进程直接崩溃可能将会影响 Lua 中的 DB 数据存档，造成数据丢失回档。
+
+## 如何调试 Lua
 
 VSCode + Emmylua（VSCode插件）。
 
@@ -194,7 +212,7 @@ MapSvr/.vscode/launch.json
 
 VSCode 运行与调试，选择 EmmyLua New Debug，就可以看见 Other_dbg.breakHere() 被触发。
 
-## Lua 常见循环依赖问题
+## 循环依赖问题
 
 如 
 
@@ -282,5 +300,4 @@ end
 return CFunc;
 ```
 
-Lua加载模块时，检查 `package.loaded[name]`，如果有值且不是 nil 则直接返回这个值。如果值是 true (表示正在加载中)，Lua 并不会直接
-返回 true，Lua 会继续执行 loader 返回的 chunk(也就是文件内容)。Lua 仅仅用 true 作为“正在加载”的标记，但不阻止再次执行模块文件。
+Lua加载模块时，检查 `package.loaded[name]`，如果有值且不是 nil 则直接返回这个值。如果值是 true (表示正在加载中)，Lua 并不会直接返回 true，Lua 会继续执行 loader 返回的 chunk(也就是文件内容)。Lua 仅仅用 true 作为“正在加载”的标记，但不阻止再次执行模块文件。

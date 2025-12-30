@@ -14,25 +14,26 @@ function PlayerCmptInfo.new(owner)
     return self
 end
 
----@return RoleDbDataInfoType
-function PlayerCmptInfo:GetInfoData()
-    return self:GetPlayer():GetRoleDbData().Info
+---@return DbPlayerBaseInfoType
+function PlayerCmptInfo:GetDbBaseInfoData()
+    local dbUserRecord = self.owner:GetDbUserRecord();
+    return dbUserRecord.baseInfo;
 end
 
----@param lv number
+---@param lv integer
 function PlayerCmptInfo:SetLevel(lv)
-    local dbData = self:GetInfoData()
+    local dbData = self:GetDbBaseInfoData()
     dbData.level = lv
 end
 
 function PlayerCmptInfo:UpLevel()
-    local dbData = self:GetInfoData()
+    local dbData = self:GetDbBaseInfoData()
     dbData.level = dbData.level + 1
 end
 
----@return number
+---@return integer
 function PlayerCmptInfo:GetLevel()
-    local dbData = self:GetInfoData()
+    local dbData = self:GetDbBaseInfoData()
     return dbData.level
 end
 
