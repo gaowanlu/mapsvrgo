@@ -9,10 +9,29 @@
 ---@field GetThisServiceAppIDParts function ():list 返回{"大区","服","服务ID","实例ID"}
 ---@field AVANT_DBSVRGO_APPID string|nil 缓存对应DbSvrGO进程的AppID
 ---@field AVANT_THISSERVICEINSTANCE_APPID_PARTS table|nil 返回本服务实例的{"大区","服","服务ID","实例ID"}
-avant = avant or nil
+---@field INT32_MAX integer int32最大值=2147483647
+---@field INT32_MIN integer int32最小值=-2147483648
+---@field INT64_MAX number int64最大值=9223372036854775807
+---@field INT64_MIN number int64最小值=-9223372036854775808
+---@field UINT32_MAX integer uint32最大值=4294967295
+---@field UINT32_MIN integer uint32最小值=0
+---@field UINT64_MAX number uint64最大值=18446744073709551615
+---@field UINT64_MIN number uint64最小值=0
+
+---@type avant
+avant                          = avant or {};
+
+avant.INT32_MAX                = 2147483647;
+avant.INT32_MIN                = -2147483648;
+avant.INT64_MAX                = 9223372036854775807;
+avant.INT64_MIN                = -9223372036854775808;
+avant.UINT32_MAX               = 4294967295;
+avant.UINT32_MIN               = 0;
+avant.UINT64_MAX               = 18446744073709551615;
+avant.UINT64_MIN               = 0;
 
 local AVANT_MAPSVRGO_SERVICEID = "1"
-local AVANT_DBSVRGO_SERVICEID = "2"
+local AVANT_DBSVRGO_SERVICEID  = "2"
 
 ---@return table 返回本服务实例的{"大区","服","服务ID","实例ID"}
 function avant:GetThisServiceAppIDParts()

@@ -12,9 +12,21 @@ enum DbOpType
     OP_DELETE = 3;
 }
 
+message DbPlayerBagItem
+{
+    int32 itemID = 1;
+    int32 number = 2;
+}
+
+message DbPlayerBag
+{
+    repeated DbPlayerBagItem bagItemList = 1;
+}
+
 message DbPlayerBaseInfo
 {
     int32 level = 1;
+    DbPlayerBag bagData = 2;
 }
 
 message DbUserRecord

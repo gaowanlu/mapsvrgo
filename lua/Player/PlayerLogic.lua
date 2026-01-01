@@ -1,31 +1,21 @@
 -- PlayerLogic.lua logic script, reloadable
 
----@class RoleDbDataBagType
----@field items table<number,number>
-
 ---@class PlayerComponentsType
 ---@field info PlayerCmptInfo
 ---@field bag PlayerCmptBag
 ---@field map PlayerCmptMap
 ---@field map3d PlayerCmptMap3D
 
----@class RoleDbDataType
+---@class PlayerCacheDataType
 ---@field id string playerId
 ---@field clientGID number clientGID
 ---@field workerIdx number workerIdx
 ---@field userId string userID
----@field name string 用户名称
----@field x number
----@field y number
----@field Bag RoleDbDataBagType
-
----@class DbPlayerBaseInfoType
----@field level integer
 
 ---@class PlayerType
----@field RoleDbData RoleDbDataType
+---@field PlayerCacheData PlayerCacheDataType
 ---@field components PlayerComponentsType
----@field DbUserRecord ProtoLua_DbUserRecord|nil mysql玩家数据
+---@field DbUserRecord ProtoLua_DbUserRecord|nil 数据库玩家数据
 
 ---@class Player:PlayerType
 local Player = require("PlayerData");
@@ -46,22 +36,12 @@ function Player.new(playerId)
     local self = setmetatable({}, Player)
 
     -- 模拟玩家的DB字段
-    self.RoleDbData = {
+    self.PlayerCacheData = {
         id = playerId,
         clientGID = 0,
         workerIdx = -1,
-        userId = "",
-        name = "Player_" .. tostring(playerId),
-        x = 0,
-        y = 0,
-        Bag = { items = {} }
+        userId = ""
     };
-
-    -- PlayerCmptBag 组件数据
-    self.RoleDbData.Bag = {
-        items = {}
-    }
-    self.RoleDbData.Bag.items[1001] = 1 -- 道具ID1001数量1个
 
     self.DbUserRecord = nil;
 
@@ -76,11 +56,6 @@ function Player.new(playerId)
     return self
 end
 
----@return RoleDbDataType
-function Player:GetRoleDbData()
-    return self.RoleDbData
-end
-
 ---@return PlayerComponentsType
 function Player:GetComponents()
     return self.components;
@@ -88,7 +63,7 @@ end
 
 ---@return string
 function Player:GetPlayerID()
-    return self:GetRoleDbData().id
+    return self.PlayerCacheData.id
 end
 
 ---@return ProtoLua_DbUserRecord
@@ -98,47 +73,35 @@ end
 
 ---@return number
 function Player:GetClientGID()
-    return self:GetRoleDbData().clientGID
+    return self.PlayerCacheData.clientGID
 end
 
 ---@return number
 function Player:GetWorkerIdx()
-    return self:GetRoleDbData().workerIdx
+    return self.PlayerCacheData.workerIdx
 end
 
 ---@return string
 function Player:GetUserId()
-    return self:GetRoleDbData().userId
+    return self.PlayerCacheData.userId
 end
 
 ---@param clientGID number
 function Player:SetClientGID(clientGID)
-    self:GetRoleDbData().clientGID = clientGID
+    self.PlayerCacheData.clientGID = clientGID
 end
 
 ---@param workerIdx number
 function Player:SetWorkerIdx(workerIdx)
-    self:GetRoleDbData().workerIdx = workerIdx
+    self.PlayerCacheData.workerIdx = workerIdx
 end
 
 ---@param userId string
 function Player:SetUserId(userId)
-    self:GetRoleDbData().userId = userId
+    self.PlayerCacheData.userId = userId
 end
 
 function Player:OnTick()
-    -- Log:Error("PlayerId %s", self:GetRoleDbData().id)
-    self.RoleDbData.x = self.RoleDbData.x + 1
-    self.RoleDbData.y = self.RoleDbData.y + 1
-    if self.RoleDbData.x > 1000 then
-        self.RoleDbData.x = 0
-    end
-    if self.RoleDbData.y > 1000 then
-        self.RoleDbData.y = 0
-    end
-
-    -- Log:Error("=>PlayerOnTick playerId %s x %d y %d ", self.RoleDbData.id, self.RoleDbData.x, self.RoleDbData.y)
-
     for _, comp in pairs(self.components) do
         comp:OnTick()
     end
