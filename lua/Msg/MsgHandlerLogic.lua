@@ -391,107 +391,119 @@ function MsgHandler:HandlerMsgFromClient(clientGID, workerIdx, cmd, message)
     end
 end
 
+---@type table<number,function>
+MsgHandler.MsgFromOtherCmd2Func = {
+    ---@param message ProtoLua_ProtoCSReqExample
+    [ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_EXAMPLE] = function(cmd, message, app_id)
+        ---@type ProtoLua_ProtoCSResExample
+        local t = {
+            testContext = message["testContext"]
+        }
+        -- 原逻辑是 Send2IPC 但发送的是 message，而不是 t
+        MsgHandler:Send2IPC(app_id, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, message)
+    end,
+
+    ---@param message ProtoLua_SelectDbUserRecordRes
+    [ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_RES] = function(cmd, message, app_id)
+        local Debug = require("DebugLogic");
+
+        local str = Debug:DebugTableToString(message)
+        if str ~= nil then
+            Log:Error("%s", str);
+        end
+    end,
+
+    ---@param message ProtoLua_InsertDbUserRecordRes
+    [ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_RES] = function(cmd, message, app_id)
+        ---@type ProtoLua_ProtoCSResCreateUser
+        local protoCSResCreateUser = {
+            ret = message.ret,
+            userId = message.dbUserRecord.userId,
+            password = message.dbUserRecord.password,
+            userRecordID = message.dbUserRecord.id
+        };
+
+        MsgHandler:Send2Client(message.clientGID, message.workerIdx,
+            ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER, protoCSResCreateUser);
+    end,
+
+    ---@param message ProtoLua_SelectDbUserRecordLoginRes
+    [ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_RES] = function(cmd, message, app_id)
+        Log:Error("login callback %s", MsgHandler:DebugTableToString(message))
+
+        local playerId = message.playerId;
+        local clientGID = message.clientGID;
+        local workerIdx = message.workerIdx;
+        local userId = message.userId;
+
+        -- 判断密码是否正确
+        ---@type ProtoLua_ProtoCSResLogin
+        local protoCSResLogin = {
+            ret = ErrCode.OK,
+            sessionId = playerId
+        };
+
+        if message.ret ~= 0 then
+            protoCSResLogin.ret = ErrCode.ERR_USERID_OR_PASSWORD_NOTMATCH;
+        elseif message.password ~= message.userRecord.password then
+            protoCSResLogin.ret = ErrCode.ERR_USERID_OR_PASSWORD_NOTMATCH;
+        elseif not PlayerMgr.IsPlayerIdOnline(playerId) then
+            Log:Error("Login callback playerId %s not online", playerId);
+        elseif nil ~= PlayerMgr.GetPlayerByPlayerId(playerId) then
+            Log:Error("already online playerId %s", playerId);
+        elseif nil ~= PlayerMgr.GetPlayerByUserId(userId) then
+            Log:Error("already online userId %s", userId);
+        else
+            -- 创建玩家对象
+            local createPlayer = PlayerMgr.CreatePlayer(playerId)
+            if createPlayer == nil then
+                Log:Error("Failed to create player for gid[%d] workerIdx[%d]", clientGID, workerIdx)
+                return
+            end
+
+            -- 将 gid_workerIdx 和 userId 关联到 Player 对象上
+            -- PlayerMgr 的 userId 与 playerId的双向映射
+            PlayerMgr.BindUserIdAndPlayerId(userId, playerId);
+            -- 设置 Player 的 userId、clientGID、workerIdx
+            createPlayer:SetUserId(userId)
+            createPlayer:SetClientGID(clientGID)
+            createPlayer:SetWorkerIdx(workerIdx)
+
+            MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_LOGIN, protoCSResLogin);
+
+            ---@type ProtoLua_DbUserRecord
+            local dbUserRecord = message.userRecord;
+            -- 将数据库玩家数据赋值到其Player对象上
+            createPlayer:OnLogin(dbUserRecord)
+            return;
+        end
+
+        MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_LOGIN, protoCSResLogin);
+    end
+};
+
 --- 其他进程来新消息了
 ---@param cmd integer 协议号
 ---@param message_from_other table 协议
 ---@param app_id string 从哪个进程appid来的消息
 function MsgHandler:HandlerMsgFromOther(cmd, message_from_other, app_id)
-    local handlers = {
-        ---@param message ProtoLua_ProtoCSReqExample
-        [ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_EXAMPLE] = function(message)
-            ---@type ProtoLua_ProtoCSResExample
-            local t = {
-                testContext = message["testContext"]
-            }
-            -- 原逻辑是 Send2IPC 但发送的是 message，而不是 t
-            self:Send2IPC(app_id, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, message)
-        end,
-
-        ---@param message ProtoLua_SelectDbUserRecordRes
-        [ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_RES] = function(message)
-            local Debug = require("DebugLogic");
-
-            local str = Debug:DebugTableToString(message)
-            if str ~= nil then
-                Log:Error("%s", str);
-            end
-        end,
-
-        ---@param message ProtoLua_InsertDbUserRecordRes
-        [ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_RES] = function(message)
-            ---@type ProtoLua_ProtoCSResCreateUser
-            local protoCSResCreateUser = {
-                ret = message.ret,
-                userId = message.dbUserRecord.userId,
-                password = message.dbUserRecord.password,
-                userRecordID = message.dbUserRecord.id
-            };
-
-            self:Send2Client(message.clientGID, message.workerIdx,
-                ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER, protoCSResCreateUser);
-        end,
-
-        ---@param message ProtoLua_SelectDbUserRecordLoginRes
-        [ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_RES] = function(message)
-            Log:Error("login callback %s", self:DebugTableToString(message))
-
-            local playerId = message.playerId;
-            local clientGID = message.clientGID;
-            local workerIdx = message.workerIdx;
-            local userId = message.userId;
-
-            -- 判断密码是否正确
-            ---@type ProtoLua_ProtoCSResLogin
-            local protoCSResLogin = {
-                ret = ErrCode.OK,
-                sessionId = message.playerId
-            };
-
-            if message.ret ~= 0 then
-                protoCSResLogin.ret = ErrCode.ERR_USERID_OR_PASSWORD_NOTMATCH;
-            elseif message.password ~= message.userRecord.password then
-                protoCSResLogin.ret = ErrCode.ERR_USERID_OR_PASSWORD_NOTMATCH;
-            elseif not PlayerMgr.IsPlayerIdOnline(playerId) then
-                Log:Error("Login callback playerId %s not online", playerId);
-            elseif nil ~= PlayerMgr.GetPlayerByPlayerId(playerId) then
-                Log:Error("already online playerId %s", playerId);
-            elseif nil ~= PlayerMgr.GetPlayerByUserId(userId) then
-                Log:Error("already online userId %s", userId);
-            else
-                -- 创建玩家对象
-                local createPlayer = PlayerMgr.CreatePlayer(playerId)
-                if createPlayer == nil then
-                    Log:Error("Failed to create player for gid[%d] workerIdx[%d]", clientGID, workerIdx)
-                    return
-                end
-
-                -- 将 gid_workerIdx 和 userId 关联到 Player 对象上
-                -- PlayerMgr 的 userId 与 playerId的双向映射
-                PlayerMgr.BindUserIdAndPlayerId(userId, playerId);
-                -- 设置 Player 的 userId、clientGID、workerIdx
-                createPlayer:SetUserId(userId)
-                createPlayer:SetClientGID(clientGID)
-                createPlayer:SetWorkerIdx(workerIdx)
-
-                MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_LOGIN, protoCSResLogin);
-
-                ---@type ProtoLua_DbUserRecord
-                local dbUserRecord = message.userRecord;
-                -- 将数据库玩家数据赋值到其Player对象上
-                createPlayer:OnLogin(dbUserRecord)
-                return;
-            end
-
-            MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_LOGIN, protoCSResLogin);
-        end,
-    }
-
     ---@type any
-    local fn = handlers[cmd]
+    local fn = MsgHandler.MsgFromOtherCmd2Func[cmd];
     if fn ~= nil then
-        return fn(message_from_other)
+        return fn(cmd, message_from_other, app_id);
     end
 end
+
+---@type table<number,function>
+MsgHandler.MsgFromUDPCmd2Func = {
+    ---@param message ProtoLua_ProtoCSReqExample
+    [ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_EXAMPLE] = function(cmd, message, ip, port)
+        local t = {
+            testContext = message["testContext"]
+        }
+        MsgHandler:Send2UDP(ip, port, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, t);
+    end
+};
 
 --- 接收到了新的UDP消息
 ---@param cmd number 协议号
@@ -499,20 +511,10 @@ end
 ---@param ip string UDP客户端的IP
 ---@param port number UDP客户端的端口
 function MsgHandler:HandlerMsgFromUDP(cmd, message_from_udp, ip, port)
-    local handlers = {
-        ---@param message ProtoLua_ProtoCSReqExample
-        [ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_EXAMPLE] = function(message)
-            local t = {
-                testContext = message["testContext"]
-            }
-            self:Send2UDP(ip, port, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, t);
-        end
-    }
-
     ---@type any
-    local fn = handlers[cmd]
+    local fn = MsgHandler.MsgFromUDPCmd2Func[cmd];
     if fn ~= nil then
-        return fn(message_from_udp)
+        return fn(cmd, message_from_udp, ip, port);
     end
 end
 
