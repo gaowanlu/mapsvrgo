@@ -49,4 +49,16 @@ function Map3DMgr.OnStop()
     end
 end
 
+function Map3DMgr.OnReload()
+    local ConfigTableMgr = require("ConfigTableMgrLogic");
+    local map3DCount = ConfigTableMgr.Map3DConfig:GetMap3DIdCount();
+
+    for i = 1, map3DCount, 1 do
+        local map3DId = ConfigTableMgr.Map3DConfig:GetMap3DIdAt(i);
+
+        -- 初始化一个3D地图
+        Map3DMgr.CreateMap(map3DId);
+    end
+end
+
 return Map3DMgr;

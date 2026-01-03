@@ -47,4 +47,16 @@ function FrameSyncRoomMgr.OnStop()
     end
 end
 
+function FrameSyncRoomMgr.OnReload()
+    local ConfigTableMgr = require("ConfigTableMgrLogic");
+    local roomCount = ConfigTableMgr.FrameSyncRoomConfig:GetRoomIdCount();
+
+    for i = 1, roomCount, 1 do
+        local roomId = ConfigTableMgr.FrameSyncRoomConfig:GetRoomIdAt(i);
+
+        -- 初始化一个帧同步房间
+        FrameSyncRoomMgr.CreateRoom(roomId);
+    end
+end
+
 return FrameSyncRoomMgr;

@@ -59,12 +59,9 @@ function MapSvr.OnReload()
         end
     end
 
-    -- 初始化一张地图
-    MapMgr.CreateMap(2)
-    -- 初始化一个帧同步房间
-    FrameSyncRoomMgr.CreateRoom(3)
-    -- 初始化一个3D地图
-    Map3DMgr.CreateMap(4);
+    MapMgr.OnReload();
+    FrameSyncRoomMgr.OnReload();
+    Map3DMgr.OnReload();
 end
 
 function MapSvr.OnLuaVMRecvMessage(msg_type, cmd, message, uint64_param1, int64_param2, str_param3)

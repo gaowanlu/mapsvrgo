@@ -1,28 +1,60 @@
 local ConfigTableMgr = require("ConfigTableMgrData");
 
----@class Map2DConfig
----@field mapIdList table<string,integer>
-
--- 在此定义你的配置数据
----@class ConfigTableMgr.Map2DConfig
 ConfigTableMgr.Map2DConfig = {
     mapIdList = {
-        ["2"] = 2
-    }
+        1,
+        2
+    },
 };
 
----@class ConfigTableMgr.Map3DConfig
+---@return integer
+function ConfigTableMgr.Map2DConfig:GetMapIdCount()
+    return #self.mapIdList
+end
+
+---@param iIdx integer
+---@return integer
+function ConfigTableMgr.Map2DConfig:GetMapIdAt(iIdx)
+    ---@diagnostic disable-next-line: return-type-mismatch
+    return self.mapIdList[iIdx];
+end
+
 ConfigTableMgr.Map3DConfig = {
     mapIdList = {
-        ["4"] = 4
-    }
+        4,
+        5
+    },
 };
 
----@class ConfigTableMgr.FrameSyncRoomConfig
+---@return integer
+function ConfigTableMgr.Map3DConfig:GetMap3DIdCount()
+    return #self.mapIdList
+end
+
+---@param iIdx integer
+---@return integer
+function ConfigTableMgr.Map3DConfig:GetMap3DIdAt(iIdx)
+    ---@diagnostic disable-next-line: return-type-mismatch
+    return self.mapIdList[iIdx];
+end
+
 ConfigTableMgr.FrameSyncRoomConfig = {
     roomIdList = {
-        ["3"] = 3
-    }
+        6,
+        7
+    },
 };
+
+---@return integer
+function ConfigTableMgr.FrameSyncRoomConfig:GetRoomIdCount()
+    return #self.roomIdList
+end
+
+---@param iIdx integer
+---@return integer
+function ConfigTableMgr.FrameSyncRoomConfig:GetRoomIdAt(iIdx)
+    ---@diagnostic disable-next-line: return-type-mismatch
+    return self.roomIdList[iIdx];
+end
 
 return ConfigTableMgr;

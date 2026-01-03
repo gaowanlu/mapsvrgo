@@ -49,4 +49,15 @@ function MapMgr.OnStop()
     end
 end
 
+function MapMgr.OnReload()
+    local ConfigTableMgr = require("ConfigTableMgrLogic");
+    local mapCount = ConfigTableMgr.Map2DConfig:GetMapIdCount();
+
+    for i = 1, mapCount, 1 do
+        local mapId = ConfigTableMgr.Map2DConfig:GetMapIdAt(i);
+        -- 初始化一张地图
+        MapMgr.CreateMap(mapId)
+    end
+end
+
 return MapMgr;
