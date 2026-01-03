@@ -1,6 +1,7 @@
 ---@class avant
 ---@field Logger function avant.Logger(str):integer
 ---@field Lua2Protobuf function Client:avant.Lua2Protobuf(message, 1, cmd, clientGID, workerIdx, ""); IPC:avant.Lua2Protobuf(message, 2, cmd, 0, -1, appId); UDP:avant.Lua2Protobuf(message, 3, cmd, 0, port, ip);
+---@field CreateNewProtobufByCmd function avant.CreateNewProtobufByCmd(cmd)->table:Message|nil
 ---@field HighresTime function avant.HighresTime():seconds:number, nanoseconds:integer
 ---@field Monotonic function avant.Monotonic():steady_clocknanoseconds:integer
 ---@field LuaDir string LuaDir路径

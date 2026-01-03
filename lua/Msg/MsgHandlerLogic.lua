@@ -345,12 +345,8 @@ MsgHandler.MsgFromClientCmd2Func = {
         end
         if ret ~= ErrCode.OK then
             ---@type ProtoLua_ProtoCSResCreateUser
-            local res = {
-                ret = ret,
-                userId = "",
-                password = "",
-                userRecordID = 0
-            };
+            local res = avant.CreateNewProtobufByCmd(ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER);
+            res.ret = ret;
 
             return MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER, res);
         end
@@ -358,16 +354,14 @@ MsgHandler.MsgFromClientCmd2Func = {
         local TimeMgr = require("TimeMgrLogic");
 
         ---@type ProtoLua_InsertDbUserRecordReq
-        local insertDbUserRecordReq = {
-            clientGID = clientGID,
-            workerIdx = workerIdx,
-            ---@diagnostic disable-next-line: missing-fields
-            dbUserRecord = {
-                id = TimeMgr.GetMS(),
-                userId = message.userId,
-                password = message.password
-            }
-        };
+        local insertDbUserRecordReq = avant.CreateNewProtobufByCmd(ProtoLua_ProtoCmd
+            .PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_REQ);
+
+        insertDbUserRecordReq.clientGID = clientGID;
+        insertDbUserRecordReq.workerIdx = workerIdx;
+        insertDbUserRecordReq.dbUserRecord.id = TimeMgr.GetMS();
+        insertDbUserRecordReq.dbUserRecord.userId = message.userId;
+        insertDbUserRecordReq.dbUserRecord.password = message.password;
 
         MsgHandler:Send2IPC(avant:GetDBSvrGoAppID(),
             ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_REQ, insertDbUserRecordReq);
