@@ -1,4 +1,12 @@
-MapSvr = MapSvr or {}
+---@class MapSvrType
+---@field safeStop boolean
+---@field IsSafeStop function
+
+---@class MapSvr:MapSvrType
+MapSvr = MapSvr or {
+    safeStop = false
+};
+
 local Log = require("Log");
 local Debug = require("DebugLogic")
 local MsgHandler = require("MsgHandlerLogic")
@@ -8,6 +16,7 @@ local FrameSyncRoomMgr = require("FrameSyncRoomMgrLogic")
 local Map3DMgr = require("Map3DMgrLogic")
 
 function MapSvr.OnInit()
+    MapSvr.safeStop = false;
 end
 
 function MapSvr.OnStop()
@@ -22,6 +31,20 @@ function MapSvr.OnTick()
     MapMgr.OnTick()
     FrameSyncRoomMgr.OnTick()
     Map3DMgr.OnTick();
+end
+
+function MapSvr.OnSafeStop()
+    Log:Error("MapSvr.OnSafeStop()");
+    MapSvr.safeStop = true;
+    PlayerMgr.OnSafeStop();
+    MapMgr.OnSafeStop();
+    FrameSyncRoomMgr.OnSafeStop();
+    Map3DMgr.OnSafeStop();
+end
+
+---@return boolean
+function MapSvr.IsSafeStop()
+    return MapSvr.safeStop;
 end
 
 function MapSvr.OnReload()

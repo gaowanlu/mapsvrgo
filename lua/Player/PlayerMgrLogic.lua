@@ -85,7 +85,9 @@ end
 
 function PlayerMgr.OnTick()
     -- Log:Error("OnTickAll Player")
-    for _, player in pairs(PlayerMgr.players) do
+    for _, playerItem in pairs(PlayerMgr.players) do
+        ---@type Player
+        local player = playerItem;
         player:OnTick()
     end
 end
@@ -94,6 +96,18 @@ function PlayerMgr.OnStop()
     Log:Error("PlayerMgr OnStop")
     for playerId, player in pairs(PlayerMgr.players) do
         PlayerMgr.RemovePlayerByPlayerId(playerId);
+    end
+end
+
+function PlayerMgr.OnSafeStop()
+    Log:Error("PlayerMgr.OnSafeStop()");
+
+
+    for playerId, playerItem in pairs(PlayerMgr.players) do
+        ---@type Player
+        local player = playerItem;
+
+        player:OnSafeStop();
     end
 end
 

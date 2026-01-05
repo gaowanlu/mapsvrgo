@@ -7,6 +7,7 @@
 #include "proto_res/proto_lua.pb.h"
 #include "proto_res/proto_example.pb.h"
 #include "proto_res/proto_database.pb.h"
+#include "proto_res/proto_udp.pb.h"
 #include "utility/singleton.h"
 #include "global/tunnel_id.h"
 #include "app/other_app.h"
@@ -1737,4 +1738,7 @@ void lua_plugin::init_message_factory()
 
     REGISTER_MSG(ProtoCmd::PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_REQ, SelectDbUserRecordLoginReq);
     REGISTER_MSG(ProtoCmd::PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGIN_RES, SelectDbUserRecordLoginRes);
+
+    REGISTER_MSG(ProtoCmd::PROTO_CMD_UDP_SAFESTOP_REQ, ProtoUDPSafeStopReq);
+    REGISTER_MSG(ProtoCmd::PROTO_CMD_UDP_SAFESTOP_RES, ProtoUDPSafeStopRes);
 }

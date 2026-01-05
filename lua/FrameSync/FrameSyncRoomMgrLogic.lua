@@ -35,7 +35,10 @@ function FrameSyncRoomMgr.RemoveRoom(roomId)
 end
 
 function FrameSyncRoomMgr.OnTick()
-    for roomId, roomObj in pairs(FrameSyncRoomMgr.rooms) do
+    for roomId, roomItem in pairs(FrameSyncRoomMgr.rooms) do
+        ---@type FrameSyncRoom
+        local roomObj = roomItem;
+
         roomObj:OnTick();
     end
 end
@@ -45,6 +48,10 @@ function FrameSyncRoomMgr.OnStop()
     for roomId, roomObj in pairs(FrameSyncRoomMgr.rooms) do
         FrameSyncRoomMgr.RemoveRoom(roomId);
     end
+end
+
+function FrameSyncRoomMgr.OnSafeStop()
+    Log:Error("FrameSyncRoomMgr.OnSafeStop()");
 end
 
 function FrameSyncRoomMgr.OnReload()

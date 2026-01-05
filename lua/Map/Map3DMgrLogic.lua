@@ -37,7 +37,10 @@ function Map3DMgr.RemoveMap(mapId)
 end
 
 function Map3DMgr.OnTick()
-    for mapId, mapObj in pairs(Map3DMgr.maps) do
+    for mapId, mapItem in pairs(Map3DMgr.maps) do
+        ---@type Map3D
+        local mapObj = mapItem;
+
         mapObj:OnTick();
     end
 end
@@ -47,6 +50,10 @@ function Map3DMgr.OnStop()
     for mapId, mapObj in pairs(Map3DMgr.maps) do
         Map3DMgr.RemoveMap(mapId);
     end
+end
+
+function Map3DMgr.OnSafeStop()
+    Log:Error("Map3DMgr.OnSafeStop()");
 end
 
 function Map3DMgr.OnReload()

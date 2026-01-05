@@ -134,9 +134,15 @@ avant(MapSvrGo luaVM) <---- TCP Protobuf ----> dbsvrgo(MySQL)
   appId: 1.1.1.1                               appId: 1.1.2.1
 ```
 
-## How to Shut Down the Server Properly
+## How to call MapSvr.OnSafeStop()
 
-Define your own UDP shutdown protocol.
+Define your own UDP shutdown protocol, such as:
+
+[ProtoUDPSafeStopReq & ProtoUDPSafeStopRes](./protocol/proto_udp.proto) 
+
+by [TypeScript UDP Client](./testing/testing_client.ts) 
+
+to calling [MapSvr.OnSafeStop()](./lua/MapSvr.lua) .
 
 Before stopping the process, send a custom UDP shutdown message to handle necessary logic such as:
 

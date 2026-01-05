@@ -6,6 +6,7 @@
 ---@field Monotonic function avant.Monotonic():steady_clocknanoseconds:integer
 ---@field LuaDir string LuaDir路径
 ---@field AppID string 本服务AppID 大区.服.服务ID.实例ID
+---@field GetAppID function 返回本服务AppID
 ---@field GetDBSvrGoAppID function ():string 获取与之对应的DBSvrGO进程的AppID
 ---@field GetThisServiceAppIDParts function ():list 返回{"大区","服","服务ID","实例ID"}
 ---@field AVANT_DBSVRGO_APPID string|nil 缓存对应DbSvrGO进程的AppID
@@ -55,6 +56,11 @@ function avant:GetThisServiceAppIDParts()
     end
 
     return newParts
+end
+
+---@return string
+function avant:GetAppID()
+    return self.AppID;
 end
 
 ---@return string 返回本服务对应的DBSvrGO进程的AppID

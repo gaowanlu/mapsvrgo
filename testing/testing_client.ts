@@ -23,22 +23,23 @@ import {
 import {
     ProtoIPCStreamAuthHandshake,
 } from "./proto_res/proto_ipc_stream";
+import { ProtoUDPSafeStopReq, ProtoUDPSafeStopRes } from "./proto_res/proto_udp";
 
 // ==========================================
 // =============== 配置常量 =================
 // ==========================================
-const IP = "www.mfavant.xyz";
+const IP = "127.0.0.1";
 const PORT = 20025;
-const UDP_IP = "www.mfavant.xyz";
+const UDP_IP = "127.0.0.1";
 const UDP_PORT = 20027;
-const RPCIP = "www.mfavant.xyz";
+const RPCIP = "127.0.0.1";
 const RPCPORT = 20026;
 const APPID = "0.0.0.369";
 
-const IS_WEBSOCKET = true;
+const IS_WEBSOCKET = false;
 
 const IS_TCP = false;
-const IS_UDP = false;
+const IS_UDP = true;
 const IS_TESTRPC = false;
 
 // ==========================================
@@ -90,6 +91,19 @@ function createCSReqExamplePackage(): Buffer {
     };
 
     return encodeProtoPackage(reqPackage);
+}
+
+function createUDPSafeStopReqPackage(): Buffer {
+    const udpSafeStopReq: ProtoUDPSafeStopReq = {
+        appId: Buffer.from(APPID, "utf-8")
+    };
+
+    const reqPackage: ProtoPackage = {
+        cmd: ProtoCmd.PROTO_CMD_UDP_SAFESTOP_REQ,
+        protocol: ProtoUDPSafeStopReq.encode(udpSafeStopReq).finish(),
+    };
+
+    return encodeProtoPackage(reqPackage)
 }
 
 /** 创建 ProtoCSReqLogin 请求包 */
@@ -565,6 +579,10 @@ function startUDPClient() {
                     // 收到回包后继续发送
                     const needSendBytes = createCSReqExamplePackage();
                     udpClient.send(needSendBytes, UDP_PORT, UDP_IP);
+                } else if (recvPkg.cmd === ProtoCmd.PROTO_CMD_UDP_SAFESTOP_RES) {
+                    const protoUDPSafeStopRes = ProtoUDPSafeStopRes.decode(recvPkg.protocol);
+                    console.log("PROTO_CMD_UDP_SAFESTOP_RES appId=", protoUDPSafeStopRes.appId.toString());
+
                 } else {
                     console.log("[UDP] unknown cmd", recvPkg.cmd);
                 }
@@ -573,24 +591,30 @@ function startUDPClient() {
             }
         });
 
-        setInterval(() => {
-            const avgRtt = udpRttCount > 0 ? (udpRttSum / udpRttCount).toFixed(2) : "N/A";
-            console.log(`UDP QPS = ${udpQpsCounter}, Avg RTT = ${avgRtt}ms`);
-
-            if (udpQpsCounter === 0) {
-                console.log("UDP Start sending...");
-                for (let i = 0; i < 100; i++) {
-                    const needSendBytes = createCSReqExamplePackage();
-                    udpClient.send(needSendBytes, UDP_PORT, UDP_IP, (err) => {
-                        if (err) console.log("[UDP] Send error", err);
-                    });
-                }
+        udpClient.send(createUDPSafeStopReqPackage(), UDP_PORT, UDP_IP, (err) => {
+            if (err) {
+                console.error("udp send safestop err", err);
             }
+        });
 
-            udpQpsCounter = 0;
-            udpRttSum = 0;
-            udpRttCount = 0;
-        }, 1000);
+        // setInterval(() => {
+        //     const avgRtt = udpRttCount > 0 ? (udpRttSum / udpRttCount).toFixed(2) : "N/A";
+        //     console.log(`UDP QPS = ${udpQpsCounter}, Avg RTT = ${avgRtt}ms`);
+
+        //     if (udpQpsCounter === 0) {
+        //         console.log("UDP Start sending...");
+        //         for (let i = 0; i < 100; i++) {
+        //             const needSendBytes = createCSReqExamplePackage();
+        //             udpClient.send(needSendBytes, UDP_PORT, UDP_IP, (err) => {
+        //                 if (err) console.log("[UDP] Send error", err);
+        //             });
+        //         }
+        //     }
+
+        //     udpQpsCounter = 0;
+        //     udpRttSum = 0;
+        //     udpRttCount = 0;
+        // }, 1000);
     };
 
     doConnectUDP();

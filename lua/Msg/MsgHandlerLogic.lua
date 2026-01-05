@@ -120,16 +120,6 @@ MsgHandler.MsgFromClientCmd2Func = {
         if player ~= nil then
             player:OnLogout()
             PlayerMgr.RemovePlayerByPlayerId(playerId)
-
-            local DbUserRecord = player:GetDbUserRecord()
-            if DbUserRecord ~= nil then
-                Log:Error("logout save to database for playerId %s userId %s", playerId, player:GetUserId())
-
-                DbUserRecord.op = 1; -- replace
-                MsgHandler:Send2IPC(avant:GetDBSvrGoAppID(),
-                    ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_WRITE_DBUSERRECORD_REQ,
-                    DbUserRecord);
-            end
         else
             -- Log:Error("Player does not exist for gid[%d] workerIdx[%d]", clientGID, workerIdx)
         end
@@ -178,6 +168,16 @@ MsgHandler.MsgFromClientCmd2Func = {
         if player ~= nil then
             Log:Error("Player already exists for gid[%d] workerIdx[%d]", clientGID, workerIdx)
             return
+        end
+
+        if MapSvr.IsSafeStop() == true then
+            ---@type ProtoLua_ProtoCSResLogin
+            local res = {
+                ret = ErrCode.ERR_SERVICE_SAFESTOPED,
+                sessionId = playerId
+            };
+            MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_LOGIN, res);
+            return;
         end
 
         -- Log:Error("Login Request from clientGID[%d] workerIdx[%d] message: %s", clientGID,
@@ -336,6 +336,15 @@ MsgHandler.MsgFromClientCmd2Func = {
 
     ---@param message ProtoLua_ProtoCSReqCreateUser
     [ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_CREATE_USER] = function(playerId, clientGID, workerIdx, cmd, message)
+        if MapSvr.IsSafeStop() == true then
+            ---@type ProtoLua_ProtoCSResCreateUser
+            local res = avant.CreateNewProtobufByCmd(ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER);
+            res.ret = ErrCode.ERR_SERVICE_SAFESTOPED;
+
+            MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER, res);
+            return;
+        end
+
         local ret = ErrCode.OK;
         if #message.userId <= 0 or #message.userId > 64 then
             ret = ErrCode.ERR_USERID_INPUT_INVALID;
@@ -430,6 +439,16 @@ MsgHandler.MsgFromOtherCmd2Func = {
         local workerIdx = message.workerIdx;
         local userId = message.userId;
 
+        if MapSvr.IsSafeStop() == true then
+            ---@type ProtoLua_ProtoCSResLogin
+            local res = {
+                ret = ErrCode.ERR_SERVICE_SAFESTOPED,
+                sessionId = playerId
+            };
+            MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_LOGIN, res);
+            return;
+        end
+
         -- 判断密码是否正确
         ---@type ProtoLua_ProtoCSResLogin
         local protoCSResLogin = {
@@ -492,10 +511,22 @@ end
 MsgHandler.MsgFromUDPCmd2Func = {
     ---@param message ProtoLua_ProtoCSReqExample
     [ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_EXAMPLE] = function(cmd, message, ip, port)
+        ---@type ProtoLua_ProtoCSResExample
         local t = {
             testContext = message["testContext"]
-        }
+        };
+
         MsgHandler:Send2UDP(ip, port, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_EXAMPLE, t);
+    end,
+
+    ---@param message ProtoLua_ProtoUDPSafeStopReq
+    [ProtoLua_ProtoCmd.PROTO_CMD_UDP_SAFESTOP_REQ] = function(cmd, message, ip, port)
+        ---@type ProtoLua_ProtoUDPSafeStopRes
+        local t = {
+            appId = avant:GetAppID()
+        };
+        MsgHandler:Send2UDP(ip, port, ProtoLua_ProtoCmd.PROTO_CMD_UDP_SAFESTOP_RES, t);
+        MapSvr.OnSafeStop();
     end
 };
 
