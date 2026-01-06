@@ -126,7 +126,11 @@ function Player:OnLogout()
     if DbUserRecord ~= nil then
         Log:Error("logout save to database for playerId %s userId %s", self:GetPlayerID(), self:GetUserId())
 
-        DbUserRecord.op = 1; -- replace
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        ---@type ProtoLua_DbOpType
+        local op = ProtoLua_DbOpType.OP_REPLACE;
+
+        DbUserRecord.op = op; -- replace
         MsgHandler:Send2IPC(avant:GetDBSvrGoAppID(),
             ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_WRITE_DBUSERRECORD_REQ,
             DbUserRecord);
