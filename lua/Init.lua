@@ -72,10 +72,20 @@ function OnOtherReload()
     Other:OnReload();
 end
 
-function OnLuaVMRecvMessage(isMainVM, isOtherVM, isWorkerVM, workerIdx, msg_type, cmd, message, uint64_param1,
-                            int64_param2, str_param3)
+---@param isMainVM boolean
+---@param isOtherVM boolean
+---@param isWorkerVM boolean
+---@param workerIdx integer
+---@param msg_type integer
+---@param cmd integer
+---@param message table
+---@param uint64_param1_string string
+---@param int64_param2_string string
+---@param str_param3 string
+function OnLuaVMRecvMessage(isMainVM, isOtherVM, isWorkerVM, workerIdx, msg_type, cmd, message, uint64_param1_string,
+                            int64_param2_string, str_param3)
     local Other = require("Other")
     if isOtherVM then
-        Other:OnLuaVMRecvMessage(msg_type, cmd, message, uint64_param1, int64_param2, str_param3);
+        Other:OnLuaVMRecvMessage(msg_type, cmd, message, uint64_param1_string, int64_param2_string, str_param3);
     end
 end

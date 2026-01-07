@@ -8,7 +8,7 @@
 
 ---@class PlayerCacheDataType
 ---@field id string playerId
----@field clientGID integer clientGID
+---@field clientGID string clientGID
 ---@field workerIdx integer workerIdx
 ---@field userId string userID
 
@@ -38,7 +38,7 @@ function Player.new(playerId)
     -- 模拟玩家的DB字段
     self.PlayerCacheData = {
         id = playerId,
-        clientGID = 0,
+        clientGID = "0",
         workerIdx = -1,
         userId = ""
     };
@@ -71,7 +71,7 @@ function Player:GetDbUserRecord()
     return self.DbUserRecord
 end
 
----@return integer
+---@return string
 function Player:GetClientGID()
     return self.PlayerCacheData.clientGID
 end
@@ -86,7 +86,7 @@ function Player:GetUserId()
     return self.PlayerCacheData.userId
 end
 
----@param clientGID integer
+---@param clientGID string
 function Player:SetClientGID(clientGID)
     self.PlayerCacheData.clientGID = clientGID
 end

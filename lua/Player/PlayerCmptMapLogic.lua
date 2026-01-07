@@ -79,7 +79,7 @@ function PlayerCmptMap:EnterNewMap(mapId)
         userId = self:GetPlayer():GetUserId(),
         x = math.ceil(mapPlayer.x),
         y = math.ceil(mapPlayer.y),
-        serverTime = map:GetLastTickTimeMS(),
+        serverTime = tostring(map:GetLastTickTimeMS()),
         tileSize = map:GetTileSize(),
         width = map:GetTileMapWidth(),
         height = map:GetTileMapHeight(),

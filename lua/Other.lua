@@ -48,11 +48,17 @@ function Other:OnReload()
     MapSvr.OnReload()
 end
 
-function Other:OnLuaVMRecvMessage(msg_type, cmd, message, uint64_param1, int64_param2, str_param3)
-    --Log:Error("msg_type %d cmd %d uint64_param1 %d int64_param2 %d str_param3 %s", msg_type, cmd, uint64_param1,
-    --    int64_param2, str_param3);
+---@param msg_type integer
+---@param cmd integer
+---@param message table
+---@param uint64_param1_string string
+---@param int64_param2_string string
+---@param str_param3 string
+function Other:OnLuaVMRecvMessage(msg_type, cmd, message, uint64_param1_string, int64_param2_string, str_param3)
+    --Log:Error("msg_type %d cmd %d uint64_param1_string %s int64_param2_string %s str_param3 %s", msg_type, cmd, uint64_param1_string,
+    --    int64_param2_string, str_param3);
 
-    MapSvr.OnLuaVMRecvMessage(msg_type, cmd, message, uint64_param1, int64_param2, str_param3)
+    MapSvr.OnLuaVMRecvMessage(msg_type, cmd, message, uint64_param1_string, int64_param2_string, str_param3)
 end
 
 return Other;

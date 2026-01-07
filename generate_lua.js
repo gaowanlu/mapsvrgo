@@ -11,15 +11,9 @@ const PREFIX = `ProtoLua_`;
 function protoToLuaType(protoType) {
   const typeMap = {
     int32: "integer",
-    int64: "integer",
+    int64: "string",
     uint32: "integer",
-    uint64: "integer",
-    sint32: "integer",
-    sint64: "integer",
-    fixed32: "integer",
-    fixed64: "integer",
-    sfixed32: "integer",
-    sfixed64: "integer",
+    uint64: "string",
     float: "number",
     double: "number",
     bool: "boolean",

@@ -21,14 +21,13 @@ WORKDIR /mapsvrgo
 RUN node ./generate_lua.js ./protocol/ ./lua/ProtoLua/
 
 WORKDIR /mapsvrgo/avant_dir
-RUN rm -rf CMakeCache.txt \
-    && cd protocol \
+RUN cd protocol \
     && make \
     && cd .. \
     && mkdir build \
     && rm -rf ./build/* \
     && cd build \
-    && cmake .. \
+    && cmake -DAVANT_JIT_VERSION=ON .. \
     && make -j3 \
     && cd .. \
     && cd bin \

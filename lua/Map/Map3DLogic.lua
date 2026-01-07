@@ -150,9 +150,9 @@ function Octree.Subdivide(node)
         return;
     end
 
-    local hw = node.w // 2;
-    local hh = node.h // 2;
-    local hd = node.d // 2;
+    local hw = math.modf(node.w / 2);
+    local hh = math.modf(node.h / 2);
+    local hd = math.modf(node.d / 2);
 
     local x, y, z = node.x, node.y, node.z;
     local nd = node.depth + 1;
@@ -243,7 +243,7 @@ function Map3D.new(mapId)
     self.MapDbData = {
         id = mapId,
         TICK_RATE = 20,
-        DT_MS = 1000 // 20,
+        DT_MS = 50,
         lastTickTimeMS = 0,
         durationAccumulator = 0,
         size = { x = 1000000, y = 1000000, z = 1000000 }
@@ -306,9 +306,9 @@ end
 ---计算出生点
 ---@return Vec3f
 function Map3D:FindSpawnPoint()
-    local x = self.MapDbData.size.x // 2;
-    local y = self.MapDbData.size.y // 2;
-    local z = self.MapDbData.size.z // 2;
+    local x = math.modf(self.MapDbData.size.x / 2);
+    local y = math.modf(self.MapDbData.size.y / 2);
+    local z = math.modf(self.MapDbData.size.z / 2);
     return { x = x, y = y, z = z };
 end
 
@@ -552,14 +552,14 @@ function Map3D:FixedUpdate(timeMS)
 
             playersPayload[#playersPayload + 1] = {
                 userId = pl.userId,
-                x = math.tointeger(pl.pos.x) or 0,
-                y = math.tointeger(pl.pos.y) or 0,
-                z = math.tointeger(pl.pos.z) or 0,
-                vX = math.tointeger(pl.v.x) or 0,
-                vY = math.tointeger(pl.v.y) or 0,
-                vZ = math.tointeger(pl.v.z) or 0,
-                lastSeq = math.tointeger(pl.lastSeq) or 0,
-                lastClientTime = math.tointeger(pl.lastClientTime) or 0
+                x = math.modf(pl.pos.x) or 0,
+                y = math.modf(pl.pos.y) or 0,
+                z = math.modf(pl.pos.z) or 0,
+                vX = math.modf(pl.v.x) or 0,
+                vY = math.modf(pl.v.y) or 0,
+                vZ = math.modf(pl.v.z) or 0,
+                lastSeq = pl.lastSeq or 0,
+                lastClientTime = tostring(math.modf(pl.lastClientTime) or 0)
             };
         end
 
@@ -569,7 +569,7 @@ function Map3D:FixedUpdate(timeMS)
 
         ---@type ProtoLua_ProtoCSMap3DNotifyStateData
         local protoCSMap3DNotifyStateData = {
-            serverTime = timeMS,
+            serverTime = tostring(timeMS),
             players = playersPayload
         };
 

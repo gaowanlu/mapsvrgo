@@ -27,6 +27,32 @@ using namespace avant::utility;
 extern "C" int luaopen_emmy_core(lua_State *L);
 #endif
 
+#ifdef AVANT_JIT_VERSION
+int countTableElements(lua_State *L, int tableIndex)
+{
+    // 保存栈的状态
+    int count = 0;
+
+    // 保存原始栈位置
+    lua_pushvalue(L, tableIndex);       // 把表复制到栈上
+    int tableCopyIndex = lua_gettop(L); // 保存复制的表的位置
+
+    // 遍历表并计数
+    lua_pushnil(L); // 将 `nil` 压入栈上作为初始键
+    while (lua_next(L, tableCopyIndex))
+    {
+        // tableCopyIndex 是表的位置
+        count++;
+        lua_pop(L, 1); // 移除值，保留键
+    }
+
+    // 恢复栈状态（移除临时表副本）
+    lua_remove(L, tableCopyIndex);
+
+    return count;
+}
+#endif
+
 void lua_plugin::lua_plugin_lua_return_not_is_ok_print_error(int isok, lua_State *lua_state)
 {
     if (isok != LUA_OK)
@@ -446,8 +472,8 @@ void lua_plugin::exe_OnLuaVMRecvMessage(lua_State *lua_state,
     int new_lua_stack_size = lua_gettop(lua_state);
     ASSERT_LOG_EXIT(new_lua_stack_size == old_lua_stack_size + 1);
 
-    lua_pushinteger(lua_state, uint64_param1);
-    lua_pushinteger(lua_state, int64_param2);
+    lua_pushstring(lua_state, std::to_string(uint64_param1).c_str());
+    lua_pushstring(lua_state, std::to_string(int64_param2).c_str());
     lua_pushstring(lua_state, str_param3.c_str());
 
     isok = lua_pcall(lua_state, 10, 0, err_msgh);
@@ -675,8 +701,8 @@ int lua_plugin::HighresTime(lua_State *lua_state)
     auto now = system_clock::now();
     auto ns = duration_cast<nanoseconds>(now.time_since_epoch()).count();
     double seconds = static_cast<double>(ns) / 1e9;
-    lua_pushnumber(lua_state, seconds);                       // pushes double seconds
-    lua_pushinteger(lua_state, static_cast<lua_Integer>(ns)); // pushes integer nanoseconds
+    lua_pushnumber(lua_state, seconds);                        // pushes double seconds
+    lua_pushnumber(lua_state, static_cast<std::uint64_t>(ns)); // pushes integer nanoseconds
     return 2;
 }
 
@@ -686,7 +712,7 @@ int lua_plugin::Monotonic(lua_State *lua_state)
     using namespace std::chrono;
     auto now = steady_clock::now();
     auto ns = duration_cast<nanoseconds>(now.time_since_epoch()).count();
-    lua_pushinteger(lua_state, static_cast<lua_Integer>(ns)); // pushes integer nanoseconds
+    lua_pushnumber(lua_state, static_cast<std::uint64_t>(ns)); // pushes integer nanoseconds
     return 1;
 }
 
@@ -714,10 +740,10 @@ int lua_plugin::CreateNewProtobufByCmd(lua_State *lua_state)
     int num = lua_gettop(lua_state);
     ASSERT_LOG_EXIT(num == 1);
 
-    int isok = lua_isinteger(lua_state, 1);
+    int isok = lua_isnumber(lua_state, 1);
     ASSERT_LOG_EXIT(isok);
 
-    int cmd = lua_tointeger(lua_state, 1);
+    int cmd = lua_tonumber(lua_state, 1);
     lua_pop(lua_state, 1); // pop cmd
 
     std::shared_ptr<google::protobuf::Message> msg_ptr = singleton<lua_plugin>::instance()->protobuf_cmd2message(cmd);
@@ -745,22 +771,22 @@ int lua_plugin::Lua2Protobuf(lua_State *lua_state)
 
     int isok = lua_isstring(lua_state, 6); // str_param3
     ASSERT_LOG_EXIT(isok);
-    isok = lua_isinteger(lua_state, 5); // int64_param2
+    isok = lua_isstring(lua_state, 5); // int64_param2_string
     ASSERT_LOG_EXIT(isok);
-    isok = lua_isinteger(lua_state, 4); // uint64_param1
+    isok = lua_isstring(lua_state, 4); // uint64_param1_string
     ASSERT_LOG_EXIT(isok);
-    isok = lua_isinteger(lua_state, 3); // cmd
+    isok = lua_isnumber(lua_state, 3); // cmd
     ASSERT_LOG_EXIT(isok);
-    isok = lua_isinteger(lua_state, 2); // msg_tyep
+    isok = lua_isnumber(lua_state, 2); // msg_tyep
     ASSERT_LOG_EXIT(isok);
     isok = lua_istable(lua_state, 1); // message
     ASSERT_LOG_EXIT(isok);
 
     const std::string str_param3(lua_tostring(lua_state, 6));
     lua_pop(lua_state, 1); // 弹出 str_param3
-    int64_t int64_param2 = lua_tointeger(lua_state, 5);
+    int64_t int64_param2 = std::stoll(std::string(lua_tostring(lua_state, 5)));
     lua_pop(lua_state, 1); // 弹出 int64_param2
-    uint64_t uint64_param1 = lua_tointeger(lua_state, 4);
+    uint64_t uint64_param1 = std::stoull(std::string(lua_tostring(lua_state, 4)));
     lua_pop(lua_state, 1); // 弹出 uint64_param1
     int cmd = lua_tointeger(lua_state, 3);
     lua_pop(lua_state, 1); // 弹出 cmd
@@ -893,12 +919,12 @@ void lua_plugin::lua2protobuf_nostack(lua_State *L, const google::protobuf::Mess
         if (lua_next(L, frame.frame_in_luastack) != 0)
         {
             // 判断键的类型
-            LOG_LUA_PLUGIN_RUNTIME("在 {} 中发现一个类型为 {} 的键 Lua栈大小 {}", frame.package_ptr->GetDescriptor()->name().data(), luaL_typename(L, -2), lua_gettop(L));
+            LOG_LUA_PLUGIN_RUNTIME("在 {} 中发现一个类型为 {} 的键", frame.package_ptr->GetDescriptor()->name().data(), luaL_typename(L, -2));
             // lua2protobuf_nostack只支持处理 integer为键或string为键其他一律不支持没有意义
 
             std::string this_loop_key;
 
-            if (lua_isinteger(L, -2)) // 优先判断是否为整数因为即使是number lua_isstring也会通过
+            if (lua_isnumber(L, -2)) // 优先判断是否为整数因为即使是number lua_isstring也会通过
             {
                 LOG_LUA_PLUGIN_RUNTIME("整数 {} 作为键", lua_tointeger(L, -2));
                 this_loop_key = std::to_string(lua_tointeger(L, -2));
@@ -941,16 +967,20 @@ void lua_plugin::lua2protobuf_nostack(lua_State *L, const google::protobuf::Mess
                         lua_pop(L, 1); // field_val
                         break;
                     }
+#ifdef AVANT_JIT_VERSION
+                    const int n_in_array = countTableElements(L, -1);
+#elif defined(AVANT_NO_JIT_VERSION)
                     const int n_in_array = lua_rawlen(L, -1);
+#endif
                     for (int arr_idx = 1; arr_idx <= n_in_array; ++arr_idx)
                     {
                         // 获取-1位置的val中的第i个元素后放入栈顶
                         lua_rawgeti(L, -1, arr_idx);
                         // 获取栈顶的值
-                        if (lua_isinteger(L, -1))
+                        if (lua_isnumber(L, -1))
                         {
-                            LOG_LUA_PLUGIN_RUNTIME("{}", lua_tointeger(L, -1));
-                            reflection->AddInt32(frame.package_ptr, field, lua_tointeger(L, -1));
+                            LOG_LUA_PLUGIN_RUNTIME("{}", lua_tonumber(L, -1));
+                            reflection->AddInt32(frame.package_ptr, field, lua_tonumber(L, -1));
                         }
                         // 弹出栈顶的值
                         lua_pop(L, 1);
@@ -958,10 +988,10 @@ void lua_plugin::lua2protobuf_nostack(lua_State *L, const google::protobuf::Mess
                 }
                 else
                 {
-                    if (lua_isinteger(L, -1))
+                    if (lua_isnumber(L, -1))
                     {
-                        LOG_LUA_PLUGIN_RUNTIME("{}", lua_tointeger(L, -1));
-                        reflection->SetInt32(frame.package_ptr, field, lua_tointeger(L, -1));
+                        LOG_LUA_PLUGIN_RUNTIME("{}", lua_tonumber(L, -1));
+                        reflection->SetInt32(frame.package_ptr, field, lua_tonumber(L, -1));
                     }
                 }
                 // 把栈顶刚才解析出的val弹出
@@ -978,24 +1008,30 @@ void lua_plugin::lua2protobuf_nostack(lua_State *L, const google::protobuf::Mess
                         lua_pop(L, 1); // field_val
                         break;
                     }
+#ifdef AVANT_JIT_VERSION
+                    const int n_in_array = countTableElements(L, -1);
+#elif defined(AVANT_NO_JIT_VERSION)
                     const int n_in_array = lua_rawlen(L, -1);
+#endif
                     for (int arr_idx = 1; arr_idx <= n_in_array; ++arr_idx)
                     {
                         lua_rawgeti(L, -1, arr_idx);
-                        if (lua_isinteger(L, -1))
+                        if (lua_isstring(L, -1))
                         {
-                            LOG_LUA_PLUGIN_RUNTIME("{}", lua_tointeger(L, -1));
-                            reflection->AddInt64(frame.package_ptr, field, lua_tointeger(L, -1));
+                            int64_t int64_val = std::stoll(std::string(lua_tostring(L, -1)));
+                            LOG_LUA_PLUGIN_RUNTIME("{}", int64_val);
+                            reflection->AddInt64(frame.package_ptr, field, int64_val);
                         }
                         lua_pop(L, 1);
                     }
                 }
                 else
                 {
-                    if (lua_isinteger(L, -1))
+                    if (lua_isstring(L, -1))
                     {
-                        LOG_LUA_PLUGIN_RUNTIME("{}", lua_tointeger(L, -1));
-                        reflection->SetInt64(frame.package_ptr, field, lua_tointeger(L, -1));
+                        int64_t int64_val = std::stoll(std::string(lua_tostring(L, -1)));
+                        LOG_LUA_PLUGIN_RUNTIME("{}", int64_val);
+                        reflection->SetInt64(frame.package_ptr, field, int64_val);
                     }
                 }
                 lua_pop(L, 1); // field_val
@@ -1011,24 +1047,28 @@ void lua_plugin::lua2protobuf_nostack(lua_State *L, const google::protobuf::Mess
                         lua_pop(L, 1); // field_val
                         break;
                     }
+#ifdef AVANT_JIT_VERSION
+                    const int n_in_array = countTableElements(L, -1);
+#elif defined(AVANT_NO_JIT_VERSION)
                     const int n_in_array = lua_rawlen(L, -1);
+#endif
                     for (int arr_idx = 1; arr_idx <= n_in_array; ++arr_idx)
                     {
                         lua_rawgeti(L, -1, arr_idx);
-                        if (lua_isinteger(L, -1))
+                        if (lua_isnumber(L, -1))
                         {
-                            LOG_LUA_PLUGIN_RUNTIME("{}", lua_tointeger(L, -1));
-                            reflection->AddUInt32(frame.package_ptr, field, lua_tointeger(L, -1));
+                            LOG_LUA_PLUGIN_RUNTIME("{}", lua_tonumber(L, -1));
+                            reflection->AddUInt32(frame.package_ptr, field, lua_tonumber(L, -1));
                         }
                         lua_pop(L, 1);
                     }
                 }
                 else
                 {
-                    if (lua_isinteger(L, -1))
+                    if (lua_isnumber(L, -1))
                     {
-                        LOG_LUA_PLUGIN_RUNTIME("{}", lua_tointeger(L, -1));
-                        reflection->SetUInt32(frame.package_ptr, field, lua_tointeger(L, -1));
+                        LOG_LUA_PLUGIN_RUNTIME("{}", lua_tonumber(L, -1));
+                        reflection->SetUInt32(frame.package_ptr, field, lua_tonumber(L, -1));
                     }
                 }
                 lua_pop(L, 1); // field_val
@@ -1044,24 +1084,30 @@ void lua_plugin::lua2protobuf_nostack(lua_State *L, const google::protobuf::Mess
                         lua_pop(L, 1); // field_val
                         break;
                     }
+#ifdef AVANT_JIT_VERSION
+                    const int n_in_array = countTableElements(L, -1);
+#elif defined(AVANT_NO_JIT_VERSION)
                     const int n_in_array = lua_rawlen(L, -1);
+#endif
                     for (int arr_idx = 1; arr_idx <= n_in_array; ++arr_idx)
                     {
                         lua_rawgeti(L, -1, arr_idx);
-                        if (lua_isinteger(L, -1))
+                        if (lua_isstring(L, -1))
                         {
-                            LOG_LUA_PLUGIN_RUNTIME("{}", lua_tointeger(L, -1));
-                            reflection->AddUInt64(frame.package_ptr, field, lua_tointeger(L, -1));
+                            uint64_t uint64_val = std::stoull(std::string(lua_tostring(L, -1)));
+                            LOG_LUA_PLUGIN_RUNTIME("{}", uint64_val);
+                            reflection->AddUInt64(frame.package_ptr, field, uint64_val);
                         }
                         lua_pop(L, 1);
                     }
                 }
                 else
                 {
-                    if (lua_isinteger(L, -1))
+                    if (lua_isstring(L, -1))
                     {
-                        LOG_LUA_PLUGIN_RUNTIME("{}", lua_tointeger(L, -1));
-                        reflection->SetUInt64(frame.package_ptr, field, lua_tointeger(L, -1));
+                        uint64_t uint64_val = std::stoull(std::string(lua_tostring(L, -1)));
+                        LOG_LUA_PLUGIN_RUNTIME("{}", uint64_val);
+                        reflection->SetUInt64(frame.package_ptr, field, uint64_val);
                     }
                 }
                 lua_pop(L, 1); // field_val
@@ -1077,7 +1123,11 @@ void lua_plugin::lua2protobuf_nostack(lua_State *L, const google::protobuf::Mess
                         lua_pop(L, 1); // field_val
                         break;
                     }
+#ifdef AVANT_JIT_VERSION
+                    const int n_in_array = countTableElements(L, -1);
+#elif defined(AVANT_NO_JIT_VERSION)
                     const int n_in_array = lua_rawlen(L, -1);
+#endif
                     for (int arr_idx = 1; arr_idx <= n_in_array; ++arr_idx)
                     {
                         lua_rawgeti(L, -1, arr_idx);
@@ -1110,7 +1160,11 @@ void lua_plugin::lua2protobuf_nostack(lua_State *L, const google::protobuf::Mess
                         lua_pop(L, 1); // field_val
                         break;
                     }
+#ifdef AVANT_JIT_VERSION
+                    const int n_in_array = countTableElements(L, -1);
+#elif defined(AVANT_NO_JIT_VERSION)
                     const int n_in_array = lua_rawlen(L, -1);
+#endif
                     for (int arr_idx = 1; arr_idx <= n_in_array; ++arr_idx)
                     {
                         lua_rawgeti(L, -1, arr_idx);
@@ -1143,7 +1197,11 @@ void lua_plugin::lua2protobuf_nostack(lua_State *L, const google::protobuf::Mess
                         lua_pop(L, 1); // field_val
                         break;
                     }
+#ifdef AVANT_JIT_VERSION
+                    const int n_in_array = countTableElements(L, -1);
+#elif defined(AVANT_NO_JIT_VERSION)
                     const int n_in_array = lua_rawlen(L, -1);
+#endif
                     for (int arr_idx = 1; arr_idx <= n_in_array; ++arr_idx)
                     {
                         lua_rawgeti(L, -1, arr_idx);
@@ -1176,7 +1234,11 @@ void lua_plugin::lua2protobuf_nostack(lua_State *L, const google::protobuf::Mess
                         lua_pop(L, 1); // field_val
                         break;
                     }
+#ifdef AVANT_JIT_VERSION
+                    const int n_in_array = countTableElements(L, -1);
+#elif defined(AVANT_NO_JIT_VERSION)
                     const int n_in_array = lua_rawlen(L, -1);
+#endif
                     for (int arr_idx = 1; arr_idx <= n_in_array; ++arr_idx)
                     {
                         lua_rawgeti(L, -1, arr_idx);
@@ -1209,24 +1271,28 @@ void lua_plugin::lua2protobuf_nostack(lua_State *L, const google::protobuf::Mess
                         lua_pop(L, 1); // field_val
                         break;
                     }
+#ifdef AVANT_JIT_VERSION
+                    const int n_in_array = countTableElements(L, -1);
+#elif defined(AVANT_NO_JIT_VERSION)
                     const int n_in_array = lua_rawlen(L, -1);
+#endif
                     for (int arr_idx = 1; arr_idx <= n_in_array; ++arr_idx)
                     {
                         lua_rawgeti(L, -1, arr_idx);
-                        if (lua_isinteger(L, -1))
+                        if (lua_isnumber(L, -1))
                         {
-                            LOG_LUA_PLUGIN_RUNTIME("{}", lua_tointeger(L, -1));
-                            reflection->AddEnumValue(frame.package_ptr, field, lua_tointeger(L, -1));
+                            LOG_LUA_PLUGIN_RUNTIME("{}", lua_tonumber(L, -1));
+                            reflection->AddEnumValue(frame.package_ptr, field, lua_tonumber(L, -1));
                         }
                         lua_pop(L, 1);
                     }
                 }
                 else
                 {
-                    if (lua_isinteger(L, -1))
+                    if (lua_isnumber(L, -1))
                     {
-                        LOG_LUA_PLUGIN_RUNTIME("{}", lua_tointeger(L, -1));
-                        reflection->SetEnumValue(frame.package_ptr, field, lua_tointeger(L, -1));
+                        LOG_LUA_PLUGIN_RUNTIME("{}", lua_tonumber(L, -1));
+                        reflection->SetEnumValue(frame.package_ptr, field, lua_tonumber(L, -1));
                     }
                 }
                 lua_pop(L, 1); // field_val
@@ -1257,11 +1323,16 @@ void lua_plugin::lua2protobuf_nostack(lua_State *L, const google::protobuf::Mess
                     // arr_item_val
                     // field_val 等arr_item_val栈帧处理完后需要清除
                     // field_key 等arr_item_val栈帧处理完后需要清除
-                    LOG_LUA_PLUGIN_RUNTIME("MESSAGE field->is_repeated() {}", this_loop_key.c_str());
-                    const int n_in_array = lua_rawlen(L, -1); // 数组现在放在lua栈顶 读一下数组多少个元素
-                    LOG_LUA_PLUGIN_RUNTIME("n_in_array %d", n_in_array);
+                    LOG_LUA_PLUGIN_RUNTIME("MESSAGE field->is_repeated()");
+
+                    // 数组现在放在lua栈顶 读一下数组多少个元素
+#ifdef AVANT_JIT_VERSION
+                    const int n_in_array = countTableElements(L, -1);
+#elif defined(AVANT_NO_JIT_VERSION)
+                    const int n_in_array = lua_rawlen(L, -1);
+#endif
+
                     int array_val_in_lua_stack = lua_gettop(L); // 数组就在栈顶
-                    LOG_LUA_PLUGIN_RUNTIME("array_val_in_lua_stack {}", array_val_in_lua_stack);
 
                     if (n_in_array == 0)
                     {
@@ -1424,7 +1495,8 @@ void lua_plugin::protobuf2lua_nostack(lua_State *L, const google::protobuf::Mess
             {
                 google::protobuf::int64 val = reflection->GetInt64(*frame.package_ptr, field);
                 LOG_LUA_PLUGIN_RUNTIME("Proto2Lua {}:{}", field->name().data(), val);
-                lua_pushinteger(L, val);
+                std::string int64_val_string = std::to_string(val);
+                lua_pushstring(L, int64_val_string.c_str());
                 lua_settable(L, -3);
                 break;
             }
@@ -1440,7 +1512,8 @@ void lua_plugin::protobuf2lua_nostack(lua_State *L, const google::protobuf::Mess
             {
                 google::protobuf::uint64 val = reflection->GetUInt64(*frame.package_ptr, field);
                 LOG_LUA_PLUGIN_RUNTIME("Proto2Lua {}:{}", field->name().data(), val);
-                lua_pushinteger(L, val);
+                std::string uint64_val_string = std::to_string(val);
+                lua_pushstring(L, uint64_val_string.c_str());
                 lua_settable(L, -3);
                 break;
             }
@@ -1557,7 +1630,8 @@ void lua_plugin::protobuf2lua_nostack(lua_State *L, const google::protobuf::Mess
                 {
                     google::protobuf::int64 val = reflection->GetRepeatedInt64(*frame.package_ptr, field, frame.repeated_loop_idx);
                     LOG_LUA_PLUGIN_RUNTIME("Proto2Lua {}[{}]:{}", field->name().data(), frame.repeated_loop_idx, val);
-                    lua_pushinteger(L, val);
+                    std::string int64_val_string = std::to_string(val);
+                    lua_pushstring(L, int64_val_string.c_str());
                     lua_settable(L, -3);
                     frame.repeated_loop_idx++;
                     break;
@@ -1575,7 +1649,8 @@ void lua_plugin::protobuf2lua_nostack(lua_State *L, const google::protobuf::Mess
                 {
                     google::protobuf::uint64 val = reflection->GetRepeatedUInt64(*frame.package_ptr, field, frame.repeated_loop_idx);
                     LOG_LUA_PLUGIN_RUNTIME("Proto2Lua {}[{}]:{}", field->name().data(), frame.repeated_loop_idx, val);
-                    lua_pushinteger(L, val);
+                    std::string uint64_val_string = std::to_string(val);
+                    lua_pushstring(L, uint64_val_string.c_str());
                     lua_settable(L, -3);
                     frame.repeated_loop_idx++;
                     break;

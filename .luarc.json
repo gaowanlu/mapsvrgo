@@ -1,0 +1,12 @@
+{
+  "workspace": {
+    "ignoreDir": [
+      "src",
+      "protocol",
+      "dbsvrgo",
+      "config",
+      "avant",
+      "avant_dir"
+    ]
+  }
+}

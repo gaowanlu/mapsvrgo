@@ -145,9 +145,9 @@ function QuadTree.Subdivide(qtNode)
         return
     end
     -- 子节点宽=当前宽的一半
-    local hw = qtNode.w // 2;
+    local hw = math.modf(qtNode.w / 2);
     -- 子节点高=当前高的一半
-    local hh = qtNode.h // 2;
+    local hh = math.modf(qtNode.h / 2);
 
     -- 创建四个子节点（左上，右上，左下，右下）
     qtNode.children = {
@@ -233,7 +233,7 @@ function Map.new(mapId)
         id = mapId,
         name = "Map_" .. tostring(mapId),
         TICK_RATE = 20,
-        DT_MS = 1000 // 20,
+        DT_MS = 50,
         lastTickTimeMS = 0,
         durationAccumulator = 0
     };
@@ -319,7 +319,7 @@ end
 function Map:FindSpawnPoint()
     local mapW = self.tileMap.width * self.tileMap.tileSize
     local mapH = self.tileMap.height * self.tileMap.tileSize
-    return { x = mapW // 2, y = mapH // 2 }
+    return { x = math.modf(mapW / 2), y = math.modf(mapH / 2) }
 end
 
 -- 新玩家加入地图
@@ -505,17 +505,14 @@ function Map:FixedUpdate(timeMS)
             ---@type MapPlayerType
             local pl = self.players[o.userId];
 
-            -- Log:Error("pl x %s y %s vX %s vY %s", tostring(math.tointeger(pl.x)), tostring(math.tointeger(pl.y)),
-            --     tostring(math.tointeger(pl.vX)), tostring(math.tointeger(pl.vY)));
-
             playersPayload[#playersPayload + 1] = {
                 userId = o.userId,
-                x = math.tointeger(pl.x) or 0,
-                y = math.tointeger(pl.y) or 0,
-                vX = math.tointeger(pl.vX) or 0,
-                vY = math.tointeger(pl.vY) or 0,
-                lastSeq = math.tointeger(pl.lastSeq) or 0,
-                lastClientTime = math.tointeger(pl.lastClientTime) or 0
+                x = math.modf(pl.x) or 0,
+                y = math.modf(pl.y) or 0,
+                vX = math.modf(pl.vX) or 0,
+                vY = math.modf(pl.vY) or 0,
+                lastSeq = math.modf(pl.lastSeq) or 0,
+                lastClientTime = tostring(math.modf(pl.lastClientTime) or 0)
             };
         end
 
@@ -525,7 +522,7 @@ function Map:FixedUpdate(timeMS)
 
         ---@type ProtoLua_ProtoCSMapNotifyStateData
         local protoCSMapNotifyStateData = {
-            serverTime = timeMS,
+            serverTime = tostring(timeMS),
             players = playersPayload
         };
 

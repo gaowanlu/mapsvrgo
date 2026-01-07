@@ -1,5 +1,6 @@
 local Log = {};
 
+---@diagnostic disable-next-line: access-invisible
 -- lua5.4 and lua5.1 for luajit
 local unpack = table.unpack or unpack;
 

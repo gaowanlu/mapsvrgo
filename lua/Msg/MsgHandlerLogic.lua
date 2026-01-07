@@ -44,7 +44,7 @@ function MsgHandler:DebugTableToString(t, indent)
 end
 
 --- 发送协议到客户端
----@param clientGID number 客户端连接gid
+---@param clientGID string 客户端连接gid
 ---@param workerIdx number 客户端连接所在worker下标
 ---@param cmd number 协议号
 ---@param message table protobufMessage
@@ -216,7 +216,7 @@ MsgHandler.MsgFromClientCmd2Func = {
         ---@type ProtoLua_ProtoCSResMapPong
         local res = {
             clientTime = message.clientTime,
-            serverTime = serverTimeMS
+            serverTime = tostring(serverTimeMS)
         }
 
         MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_MAP_PONG, res);
@@ -281,7 +281,7 @@ MsgHandler.MsgFromClientCmd2Func = {
         ---@type ProtoLua_ProtoCSResMap3DPong
         local res = {
             clientTime = message.clientTime,
-            serverTime = serverTimeMS
+            serverTime = tostring(serverTimeMS)
         };
 
         MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_MAP3D_PONG, res);
@@ -368,7 +368,7 @@ MsgHandler.MsgFromClientCmd2Func = {
 
         insertDbUserRecordReq.clientGID = clientGID;
         insertDbUserRecordReq.workerIdx = workerIdx;
-        insertDbUserRecordReq.dbUserRecord.id = TimeMgr.GetMS();
+        insertDbUserRecordReq.dbUserRecord.id = tostring(TimeMgr.GetMS());
         insertDbUserRecordReq.dbUserRecord.userId = message.userId;
         insertDbUserRecordReq.dbUserRecord.password = message.password;
 
@@ -379,7 +379,7 @@ MsgHandler.MsgFromClientCmd2Func = {
 };
 
 --- 客户端来新消息了
----@param clientGID number 客户端连接gid
+---@param clientGID string 客户端连接gid
 ---@param workerIdx number 客户端连接所在worker下标
 ---@param cmd integer 协议号
 ---@param message table protobufMessage
@@ -534,7 +534,7 @@ MsgHandler.MsgFromUDPCmd2Func = {
 ---@param cmd number 协议号
 ---@param message_from_udp table 协议
 ---@param ip string UDP客户端的IP
----@param port number UDP客户端的端口
+---@param port string UDP客户端的端口
 function MsgHandler:HandlerMsgFromUDP(cmd, message_from_udp, ip, port)
     ---@type any
     local fn = MsgHandler.MsgFromUDPCmd2Func[cmd];

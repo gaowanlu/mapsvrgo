@@ -6,11 +6,15 @@
 #include "proto/proto_util.h"
 #include "workers/other.h"
 
+#ifdef AVANT_JIT_VERSION
+#include "LuaJIT-2.1.ROLLING/src/lua.hpp"
+#elif defined(AVANT_NO_JIT_VERSION)
 extern "C"
 {
 #include "lua/lauxlib.h"
 #include "lua/lualib.h"
 }
+#endif
 
 namespace avant::app
 {

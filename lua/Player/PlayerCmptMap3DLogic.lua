@@ -78,7 +78,7 @@ function PlayerCmptMap3D:EnterNewMap(mapId)
         x = math.ceil(mapPlayer.pos.x),
         y = math.ceil(mapPlayer.pos.y),
         z = math.ceil(mapPlayer.pos.z),
-        serverTime = map:GetLastTickTimeMS(),
+        serverTime = tostring(map:GetLastTickTimeMS()),
         xSize = map:GetSize().x,
         ySize = map:GetSize().y,
         zSize = map:GetSize().z,
@@ -135,7 +135,10 @@ function PlayerCmptMap3D:MapInputReq(message)
     local dirY = message.dirY;
     local dirZ = message.dirZ;
     local seq = message.seq;
-    local clientTime = message.clientTime;
+    local clientTime = tonumber(message.clientTime);
+    if clientTime == nil then
+        clientTime = 0;
+    end
 
     currMap:MapPlayerInput(self:GetPlayer():GetUserId(), dirX, dirY, dirZ, seq, clientTime);
 end
