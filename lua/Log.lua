@@ -1,6 +1,7 @@
----@class Log
----@field Error function Log:Error("%s %d", str, n)
 local Log = {};
+
+-- lua5.4 and lua5.1 for luajit
+local unpack = table.unpack or unpack;
 
 function Log:Error(...)
     local args = {...};
@@ -10,7 +11,7 @@ function Log:Error(...)
     local source = info.source;
     local line = info.currentline;
 
-    local message = string.format(formatString, table.unpack(args));
+    local message = string.format(formatString, unpack(args));
 
     avant.Logger(string.format("[%s:%d] %s", source, line, message));
 end
