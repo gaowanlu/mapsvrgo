@@ -76,18 +76,18 @@ MsgHandler.MsgFromClientCmd2Func = {
     [ProtoLua_ProtoCmd.PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION] = function(playerId, clientGID,
                                                                                              workerIdx, cmd, message)
         if message.gid ~= clientGID then
-            Log:Error('PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION message["gid"]%d ~= clientGID[%d]',
+            Log:Error('PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_NEW_CLIENT_CONNECTION message["gid"]%s ~= clientGID[%s]',
                 message.gid, clientGID)
             return
         end
-        -- Log:Error("New Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx)
+        -- Log:Error("New Client Connection gid[%s] workerIdx[%d]", clientGID, workerIdx)
 
         PlayerMgr.SetPlayerIdOnline(playerId);
 
         local player = PlayerMgr.GetPlayerByPlayerId(playerId)
 
         if player ~= nil then
-            Log:Error("Fatal Player already exists for gid[%d] workerIdx[%d]", clientGID, workerIdx)
+            Log:Error("Fatal Player already exists for gid[%s] workerIdx[%d]", clientGID, workerIdx)
 
             -- 关闭客户端的连接
             ---@type ProtoLua_ProtoTunnelOtherLuaVM2WorkerCloseClientConnection
@@ -108,11 +108,11 @@ MsgHandler.MsgFromClientCmd2Func = {
                                                                                                workerIdx, cmd, message)
         if message.gid ~= clientGID then
             Log:Error(
-                'PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION message["gid"]%d ~= clientGID[%d]',
+                'PROTO_CMD_TUNNEL_WORKER2OTHER_EVENT_CLOSE_CLIENT_CONNECTION message["gid"]%s ~= clientGID[%s]',
                 message.gid, clientGID)
             return
         end
-        -- Log:Error("Close Client Connection gid[%d] workerIdx[%d]", clientGID, workerIdx)
+        -- Log:Error("Close Client Connection gid[%s] workerIdx[%d]", clientGID, workerIdx)
 
         PlayerMgr.SetPlayerIdOffline(playerId);
 
@@ -121,7 +121,7 @@ MsgHandler.MsgFromClientCmd2Func = {
             player:OnLogout()
             PlayerMgr.RemovePlayerByPlayerId(playerId)
         else
-            -- Log:Error("Player does not exist for gid[%d] workerIdx[%d]", clientGID, workerIdx)
+            -- Log:Error("Player does not exist for gid[%s] workerIdx[%d]", clientGID, workerIdx)
         end
     end,
 
@@ -152,7 +152,7 @@ MsgHandler.MsgFromClientCmd2Func = {
             return
         end
 
-        -- Log:Error("Recv Player from clientGID[%d] workerIdx[%d] PROTO_CMD_CS_REQ_EXAMPLE message: %s", clientGID,
+        -- Log:Error("Recv Player from clientGID[%s] workerIdx[%d] PROTO_CMD_CS_REQ_EXAMPLE message: %s", clientGID,
         --     workerIdx, self:DebugTableToString(message));
 
         t.testContext = message.testContext;
@@ -166,7 +166,7 @@ MsgHandler.MsgFromClientCmd2Func = {
         -- 检查其是否有了玩家对象 有玩家对象的肯定是重复登录了
         local player = PlayerMgr.GetPlayerByPlayerId(playerId)
         if player ~= nil then
-            Log:Error("Player already exists for gid[%d] workerIdx[%d]", clientGID, workerIdx)
+            Log:Error("Player already exists for gid[%s] workerIdx[%d]", clientGID, workerIdx)
             return
         end
 
@@ -180,7 +180,7 @@ MsgHandler.MsgFromClientCmd2Func = {
             return;
         end
 
-        -- Log:Error("Login Request from clientGID[%d] workerIdx[%d] message: %s", clientGID,
+        -- Log:Error("Login Request from clientGID[%s] workerIdx[%d] message: %s", clientGID,
         --     workerIdx, self:DebugTableToString(message));
 
         -- 查userId是否已经有了玩家对象 有的话说明重复登录了
@@ -470,7 +470,7 @@ MsgHandler.MsgFromOtherCmd2Func = {
             -- 创建玩家对象
             local createPlayer = PlayerMgr.CreatePlayer(playerId)
             if createPlayer == nil then
-                Log:Error("Failed to create player for gid[%d] workerIdx[%d]", clientGID, workerIdx)
+                Log:Error("Failed to create player for gid[%s] workerIdx[%d]", clientGID, workerIdx)
                 return
             end
 
