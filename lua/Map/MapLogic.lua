@@ -1,175 +1,9 @@
 ---@class Map:MapType
-local Map      = require("MapData")
-local Log      = require("Log")
+local Map         = require("MapData")
+local Log         = require("Log")
 
-local TimeMgr  = require("TimeMgrLogic")
-
----@class QuadTree:QuadTreeType
-local QuadTree = {
-    MAX_DEPTH = 6,  -- 最大分裂深度，超过该深度不再继续分裂，防止无限分类
-    MAX_OBJECTS = 0 -- 当节点对象数量超过该阈值时尝试分裂
-};
-
----@param x number 节点左上角坐标x
----@param y number 节点左上角坐标y
----@param w number 节点宽度
----@param h number 节点高度
----@param depth number 节点深度
----@return QuadTree
-function QuadTree.new(x, y, w, h, depth)
-    ---@type QuadTree
-    local newQuadTree = setmetatable({}, { __index = QuadTree });
-    newQuadTree.x = x;
-    newQuadTree.y = y;
-    newQuadTree.w = w;
-    newQuadTree.h = h;
-    newQuadTree.depth = depth;
-    newQuadTree.children = nil;
-    newQuadTree.list = {};
-    return newQuadTree;
-end
-
---- 判断对象obj是否完全包含在候选节点qtNode的矩形范围内
----@param qtNode QuadTree
----@param obj table -- {x, y}
----@return boolean
-function QuadTree.ContainsNode(qtNode, obj)
-    return (
-        obj.x >= qtNode.x and           -- 对象左边界在子节点左边界右侧或相等
-        obj.y >= qtNode.y and           -- 对象上边界在子节点上边界下方或相等
-        obj.x < qtNode.x + qtNode.w and -- 对象左边界小于子节点右边界（严格小于以避免边界冲突）
-        obj.y < qtNode.y + qtNode.h     -- 对象上边界小于子节点底边界
-    );
-end
-
---- 判断两个矩形A与B是否相交
----@param rectA table 矩形A
----@param rectB table 矩形B
----@return boolean 返回true表示相交或相融false表示完全分离
-function QuadTree.Intersect(rectA, rectB)
-    return not (
-        rectB.x > rectA.x + rectA.w or -- b 的左边在 a 的右边之外（不相交）
-        rectB.x + rectB.w < rectA.x or -- b 的右边在 a 的左边之外（不相交）
-        rectB.y > rectA.y + rectA.h or -- b 的上边在 a 的下边之外（不相交）
-        rectB.y + rectB.h < rectA.y    -- b 的下边在 a 的上边之外（不相交）
-    )
-end
-
---- 将对象obj插入到四叉树qtNode中
----@param qtNode QuadTree
----@param obj table
-function QuadTree.QtInert(qtNode, obj)
-    if qtNode.children ~= nil then -- 如果已经有子节点（已分裂）
-        -- 遍历四个子节点
-        for i, v in ipairs(qtNode.children) do
-            -- 如果某个子节点完全包含该对象
-            if true == QuadTree.ContainsNode(v, obj) then
-                QuadTree.QtInert(v, obj); --递归插入到该子节点（继续下沉）
-                return;                   -- 插入后结束（对象只放入完全包含它的子节点）
-            end
-        end
-
-        -- 如果没有任何子节点能包含该对象，就把对象放在当前节点的list中
-        table.insert(qtNode.list, obj)
-        obj.quadTree = qtNode;
-        return
-    end
-
-    -- 如果没有子节点（未分裂），把对象加入当前节点的list
-    table.insert(qtNode.list, obj);
-    obj.quadTree = qtNode;
-
-    -- 如果当前节点的对象数量超过阈值并且深度未达到限制，则分裂节点
-    if #qtNode.list > QuadTree.MAX_OBJECTS and qtNode.depth < QuadTree.MAX_DEPTH then
-        QuadTree.Subdivide(qtNode);
-    end
-end
-
---- 将节点qtNode分裂为四个子节点 象限划分
----@param qtNode QuadTree
-function QuadTree.Subdivide(qtNode)
-    if qtNode.w <= 4 or qtNode.h <= 4 then
-        return
-    end
-    if qtNode.children ~= nil then
-        return
-    end
-    -- 子节点宽=当前宽的一半
-    local hw = math.modf(qtNode.w / 2);
-    -- 子节点高=当前高的一半
-    local hh = math.modf(qtNode.h / 2);
-
-    -- 创建四个子节点（左上，右上，左下，右下）
-    qtNode.children = {
-        QuadTree.new(qtNode.x, qtNode.y, hw, hh, qtNode.depth + 1),           --左上象限
-        QuadTree.new(qtNode.x + hw, qtNode.y, hw, hh, qtNode.depth + 1),      --右上象限
-        QuadTree.new(qtNode.x, qtNode.y + hh, hw, hh, qtNode.depth + 1),      --左下象限
-        QuadTree.new(qtNode.x + hw, qtNode.y + hh, hw, hh, qtNode.depth + 1), --右下象限
-    };
-
-    -- old=当前节点已有对象的副本
-    local old = {}
-    for i = 1, #qtNode.list do
-        old[i] = qtNode.list[i];
-        qtNode.list[i].quadTree = nil; -- 将对象上的绑定的所在节点移除
-    end
-    -- 清空当前节点对象列表
-    qtNode.list = {}
-
-    -- 遍历旧对象并重新分配
-    for _, obj in ipairs(old) do
-        local inserted = false; -- 是否被插入到了子节点中
-
-        -- 尝试插入到四个子节点
-        for _, child in ipairs(qtNode.children) do
-            if QuadTree.ContainsNode(child, obj) then
-                -- 递归插入
-                QuadTree.QtInert(child, obj)
-                inserted = true
-                break;
-            end
-        end
-
-        -- 如果没有子节点完全包住，则放回当前节点
-        if not inserted then
-            qtNode.list[#qtNode.list + 1] = obj;
-            obj.quadTree = qtNode;
-        end
-    end
-end
-
---- 在四叉树qtNode中查询与范围range相交的对象，结果加入out数组，seen是一个set（用table实现）
----@param qtNode QuadTree
----@param range table
----@param out table
----@param seen table
-function QuadTree.QtQuery(qtNode, range, out, seen)
-    -- 如果当前节点不与查询范围相交，直接返回
-    if not QuadTree.Intersect(qtNode, range) then
-        return
-    end
-
-    -- 遍历当前节点直接存储的对象
-    for _, obj in ipairs(qtNode.list) do
-        if obj.x >= range.x and
-            obj.x < range.x + range.w and
-            obj.y >= range.y and
-            obj.y < range.y + range.h then
-            -- 去重
-            if not seen[obj.userId] then
-                seen[obj.userId] = true
-                table.insert(out, obj)
-            end
-        end
-    end
-
-    -- 递归查询子节点
-    if qtNode.children ~= nil then
-        for _, child in ipairs(qtNode.children) do
-            QuadTree.QtQuery(child, range, out, seen);
-        end
-    end
-end
+local TimeMgr     = require("TimeMgrLogic")
+local MapQuadTree = require("MapQuadTreeLogic")
 
 -- 构造新的Map对象
 ---@param mapId integer 地图ID
@@ -206,7 +40,7 @@ function Map.new(mapId)
     self.players = {};
 
     -- 四叉树
-    self.quadTree = QuadTree.new(0, 0, self.tileMap.width * self.tileMap.tileSize,
+    self.mapQuadTree = MapQuadTree.new(0, 0, self.tileMap.width * self.tileMap.tileSize,
         self.tileMap.height * self.tileMap.tileSize, 0);
 
     return self
@@ -312,7 +146,7 @@ function Map:PlayerJoinMap(playerId, userId)
     self.players[userId] = newMapPlayer;
 
     -- 加入地图四叉树
-    QuadTree.QtInert(self.quadTree, newMapPlayer);
+    MapQuadTree.QtInert(self.mapQuadTree, newMapPlayer);
 
     return true
 end
@@ -328,14 +162,10 @@ function Map:PlayerExitMap(userId)
 
     if targetPlayer ~= nil then
         -- 将玩家从地图四叉树中移除
-        if targetPlayer.quadTree ~= nil then
-            -- 从list移除userId为自己的obj 倒序遍历
-            for i = #targetPlayer.quadTree.list, 1, -1 do
-                if targetPlayer.quadTree.list[i].userId == targetPlayer.userId then
-                    table.remove(targetPlayer.quadTree.list, i);
-                end
-            end
-            targetPlayer.quadTree = nil;
+        if targetPlayer.mapQuadTree ~= nil then
+            MapQuadTree.RemoveItemFromList(targetPlayer.mapQuadTree, targetPlayer.userId);
+
+            targetPlayer.mapQuadTree = nil;
         end
 
         self.players[userId] = nil
@@ -416,17 +246,13 @@ function Map:PlayerPhysicsMove(mapPlayer)
     if mapPlayer.y > mapPxHeight - playerRadius then mapPlayer.y = mapPxHeight - playerRadius end -- 下边界
 
     -- 从四叉树中先移除这个玩家 然后再插入 做到QuadTree更新
-    if mapPlayer.quadTree ~= nil then
-        -- 从list移除userId为自己的obj 倒序遍历
-        for i = #mapPlayer.quadTree.list, 1, -1 do
-            if mapPlayer.quadTree.list[i].userId == mapPlayer.userId then
-                table.remove(mapPlayer.quadTree.list, i);
-            end
-        end
-        mapPlayer.quadTree = nil;
+    if mapPlayer.mapQuadTree ~= nil then
+        MapQuadTree.RemoveItemFromList(mapPlayer.mapQuadTree, mapPlayer.userId);
+
+        mapPlayer.mapQuadTree = nil;
     end
 
-    QuadTree.QtInert(self.quadTree, mapPlayer);
+    MapQuadTree.QtInert(self.mapQuadTree, mapPlayer);
 end
 
 ---@param timeMS integer
@@ -447,7 +273,7 @@ function Map:FixedUpdate(timeMS)
         local list = {}
         local seen = {}
 
-        QuadTree.QtQuery(self.quadTree, range, list, seen)
+        MapQuadTree.QtQuery(self.mapQuadTree, range, list, seen)
 
         ---@type table<integer,ProtoLua_ProtoMapPlayerPayload>
         local playersPayload = {}

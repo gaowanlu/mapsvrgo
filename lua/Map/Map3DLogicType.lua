@@ -1,14 +1,3 @@
----@class OctreeType
----@field x number 左上前角x
----@field y number 左上前角y
----@field z number 左上前角z
----@field w number 宽度
----@field h number 高度
----@field d number 深度
----@field depth number 当前深度
----@field children table<integer,OctreeType> 子节点数组，初始为空 未分裂
----@field list table<integer,table> 存放直接属于此节点的对象
-
 ---@class Vec3i
 ---@field x integer
 ---@field y integer
@@ -41,9 +30,9 @@
 ---@field accel number 加速度 px/ms^2
 ---@field friction number 每帧速度衰减系数
 ---@field bodyRadius number 角色碰撞半径
----@field octree OctreeType|nil 所在地图八叉树节点
+---@field map3DOctree Map3DOctree|nil 所在地图八叉树节点
 
 ---@class Map3DType
 ---@field MapDbData Map3DDbDataType
 ---@field players table<string,Map3DPlayerType>
----@field octree OctreeType 八叉树
+---@field map3DOctree Map3DOctree 八叉树

@@ -1,12 +1,3 @@
----@class QuadTreeType
----@field x number 节点左上角坐标x
----@field y number 节点左上角坐标y
----@field w number 节点宽度
----@field h number 阶段高度
----@field depth number 节点深度，根节点depth=0
----@field children table<integer,QuadTreeType> 子节点数组，初始为空 未分裂
----@field list table<integer,table> 存放直接属于此节点的对象
-
 ---@class MapPlayerType 地图内的玩家
 ---@field playerId string 连接sessionID
 ---@field userId string 用户ID
@@ -25,7 +16,7 @@
 ---@field bounce number 角色撞到障碍物时的反弹系数
 ---@field lastSeq number 最后收到并应用的客户端输入seq
 ---@field lastClientTime string 客户端发送该seq时的客户端时间(ms)
----@field quadTree QuadTreeType|nil 所在地图四叉树节点
+---@field mapQuadTree MapQuadTreeType|nil 所在地图四叉树节点
 
 ---@class TileMapType
 ---@field tileSize integer 瓦片像素大小
@@ -44,4 +35,4 @@
 ---@field players table<string, MapPlayerType> 地图内的所有玩家
 ---@field tileMap TileMapType
 ---@field MapDbData MapDbDataType
----@field quadTree QuadTreeType 四叉树
+---@field mapQuadTree MapQuadTreeType 四叉树
