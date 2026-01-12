@@ -1,6 +1,3 @@
----@class Map3DMgrType
----@field maps table<integer,Map3D>
-
 ---@class Map3DMgr:Map3DMgrType
 local Map3DMgr = require("Map3DMgrData");
 local Map3D = require("Map3DLogic");

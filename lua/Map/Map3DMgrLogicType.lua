@@ -1,0 +1,2 @@
+---@class Map3DMgrType
+---@field maps table<integer,Map3D>

@@ -36,6 +36,8 @@ RUN cd protocol \
     && cd .. \
     && cd bin \
     && ls
+WORKDIR /mapsvrgo
+RUN node generate_lua.js 
 
 WORKDIR /mapsvrgo
 RUN ./copy_avant_bin.sh
@@ -51,5 +53,7 @@ RUN apt install -y golang
 RUN chmod +x ./build.sh
 RUN ./build.sh
 
+WORKDIR /mapsvrgo
+
 ENTRYPOINT ["/bin/bash", "-c"]
-CMD ["./avant --mapsvr && tail -f /dev/null"]
+CMD ["./avant --mapsvr"]

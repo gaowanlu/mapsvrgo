@@ -119,6 +119,7 @@ function PlayerCmptMap:PingReq()
     return TimeMgr.GetMS()
 end
 
+---@param message ProtoLua_ProtoCSReqMapInput
 function PlayerCmptMap:MapInputReq(message)
     -- 如果目前没有加入任何地图则直接拒绝处理
     if false == self:HasInMap() then

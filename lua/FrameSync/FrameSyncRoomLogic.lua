@@ -1,12 +1,3 @@
--- FrameSyncRoomLogic.lua logic script, reloadable
-
----@class FrameSyncRoomDbDataType
----@field id number 房间号
----@field name string 房间名
-
----@class FrameSyncRoomType
----@field FrameSyncRoomDbData FrameSyncRoomDbDataType
-
 ---@class FrameSyncRoom:FrameSyncRoomType
 local FrameSyncRoom = require("FrameSyncRoomData")
 local Log = require("Log")

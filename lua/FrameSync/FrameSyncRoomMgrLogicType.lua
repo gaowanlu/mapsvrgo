@@ -1,0 +1,2 @@
+---@class FrameSyncRoomMgrType
+---@field rooms FrameSyncRoom

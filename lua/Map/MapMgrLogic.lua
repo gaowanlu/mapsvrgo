@@ -1,6 +1,3 @@
----@class MapMgrType
----@field maps table<integer,Map>
-
 ---@class MapMgr:MapMgrType
 local MapMgr = require("MapMgrData");
 local Map = require("MapLogic");

@@ -19,6 +19,10 @@
 ---@field UINT32_MIN integer uint32最小值=0
 ---@field UINT64_MAX number uint64最大值=18446744073709551615
 ---@field UINT64_MIN number uint64最小值=0
+---@field DOUBLE_INTEGER_MAX number double类型精确表示最大整数 9007199254740991
+---@field DOUBLE_INTEGER_MIN number double类型精确表示最小整数 -9007199254740992
+---@field FLOAT_INTEGER_MAX number float类型精确表示最大整数 8388607
+---@field FLOAT_INTEGER_MIN number float类型精确表示最小整数 -8388607
 
 ---@type avant
 avant                          = avant or {};
@@ -31,6 +35,10 @@ avant.UINT32_MAX               = 4294967295;
 avant.UINT32_MIN               = 0;
 avant.UINT64_MAX               = 18446744073709551615;
 avant.UINT64_MIN               = 0;
+avant.DOUBLE_INTEGER_MAX       = 9007199254740991;
+avant.DOUBLE_INTEGER_MIN       = -9007199254740992;
+avant.FLOAT_INTEGER_MAX        = 8388607;
+avant.FLOAT_INTEGER_MIN        = -8388607;
 
 local AVANT_MAPSVRGO_SERVICEID = "1"
 local AVANT_DBSVRGO_SERVICEID  = "2"
@@ -83,4 +91,4 @@ function avant:GetDBSvrGoAppID()
     return self.AVANT_DBSVRGO_APPID
 end
 
-return avant
+return avant;

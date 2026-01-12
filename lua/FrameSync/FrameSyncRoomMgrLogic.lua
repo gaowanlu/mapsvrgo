@@ -1,6 +1,3 @@
----@class FrameSyncRoomMgrType
----@field rooms FrameSyncRoom
-
 ---@class FrameSyncRoomMgr:FrameSyncRoomMgrType
 local FrameSyncRoomMgr = require("FrameSyncRoomMgrData");
 local FrameSyncRoom = require("FrameSyncRoomLogic");

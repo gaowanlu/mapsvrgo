@@ -6,9 +6,11 @@ const PREFIX = `ProtoLua_`;
 /**
  * proto 字段类型转lua类型
  * @param {string} protoType proto字段类型
+ * @param {isOneOf} boolean 是否oneof字段
+ * @param {isRepeated} boolean 是否repeated字段
  * @returns lua类型
  */
-function protoToLuaType(protoType) {
+function protoToLuaType(protoType, isOneOf, isRepeated) {
   const typeMap = {
     int32: "integer",
     int64: "string",
@@ -140,6 +142,7 @@ function parseProto(protoContent) {
       if (oneofField) {
         messages[currentMessage].push({
           fieldName: oneofField[2], // 字段名
+          protoType: oneofField[1],
           luaType: protoToLuaType(oneofField[1]), // 字段对应lua类型
           oneof: currentOneof, // 是否是message内的oneof字段
         });
@@ -158,6 +161,7 @@ function parseProto(protoContent) {
 
       messages[currentMessage].push({
         fieldName,
+        protoType: fieldType,
         luaType: `table<integer,${luaType}>`, // repeated字段按lua数组处理
         repeated: true,
       });
@@ -172,6 +176,7 @@ function parseProto(protoContent) {
       if (fieldMatch) {
         messages[currentMessage].push({
           fieldName: fieldMatch[2],
+          protoType: fieldMatch[1],
           luaType: protoToLuaType(fieldMatch[1]),
         });
 
@@ -220,9 +225,13 @@ function generateLuaClasses(messages, enums) {
     fields.forEach(f => {
       // oneof字段
       if (f.oneof) {
-        out += `---@field ${f.fieldName} ${f.luaType}|nil -- oneof ${f.oneof}\n`;
-      } else { // 非oneof字段
-        out += `---@field ${f.fieldName} ${f.luaType}\n`;
+        out += `---@field ${f.fieldName} ${f.luaType}|nil ${f.protoType} -- oneof ${f.oneof}\n`;
+      }
+      else if (f.repeated) {
+        out += `---@field ${f.fieldName} ${f.luaType} repeated ${f.protoType}\n`
+      }
+      else { // 非oneof字段
+        out += `---@field ${f.fieldName} ${f.luaType} ${f.protoType}\n`;
       }
     });
     out += `\n`;
@@ -243,6 +252,10 @@ function processProtoFile(protoFile, outDir) {
   const { messages, enums } = parseProto(protoContent);
   // 生成lua文件内容
   const luaCode = generateLuaClasses(messages, enums);
+  if (luaCode === '') {
+    console.error(`生成失败: generateLuaClasses empty protoFile:${protoFile} outDir:${outDir}`);
+    process.exit(1);
+  }
 
   // 获取文件名且去掉扩展名
   const baseName = path.basename(protoFile, '.proto');
@@ -251,7 +264,7 @@ function processProtoFile(protoFile, outDir) {
   // 同步写目标lua文件
   fs.writeFileSync(outFile, luaCode);
 
-  console.log(`生成: ${outFile}`);
+  console.log(`生成成功: ${outFile}`);
 }
 
 // node generate_lua.js <proto文件或目录> <输出目录>

@@ -1,9 +1,3 @@
----@class PlayerMgrType
----@field players table<string,Player>
----@field userIdToPlayerId table<number,string>
----@field playerIdToUserId table<string,number>
----@field playerIdOnlineList table<string,number>
-
 ---@class PlayerMgr:PlayerMgrType
 local PlayerMgr = require("PlayerMgrData");
 local Player = require("PlayerLogic")
