@@ -240,6 +240,25 @@ function generateLuaClasses(messages, enums) {
   return out;
 }
 
+function toProtoFormat(str) {
+  // 替换开头的 'proto' 为 'ProtoLua'
+  if (str.startsWith('proto_')) {
+    str = 'ProtoLua' + str.slice(5);  // 去掉 'proto_' 前缀，替换为 'ProtoLua'
+  }
+
+  return str
+    .split('_')   // 按下划线分隔
+    .map((word, index) => {
+      // 将每个单词首字母大写，其他字母小写
+      if (index === 0) {
+        return word.charAt(0).toUpperCase() + word.slice(1);  // 第一个字母大写
+      } else {
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      }
+    })
+    .join('');  // 连接成一个字符串
+}
+
 /**
  * 处理单个 proto 文件
  * @param {*} protoFile 要处理的文件路径
@@ -258,7 +277,8 @@ function processProtoFile(protoFile, outDir) {
   }
 
   // 获取文件名且去掉扩展名
-  const baseName = path.basename(protoFile, '.proto');
+  let baseName = path.basename(protoFile, '.proto');
+  baseName = toProtoFormat(baseName);
   // 拼接输出文件路径和.lua文件名称
   const outFile = path.join(outDir, `${baseName}.lua`);
   // 同步写目标lua文件

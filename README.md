@@ -83,7 +83,7 @@ void lua_plugin::init_message_factory()
 We rely heavily on Protobuf-defined types and expect them to automatically generate Lua type
 annotations, including enum support.
 
-The [generate_lua.js](./generate_lua.js) script can generate corresponding Lua files for all `.proto` files under the [protocol directory](./protocol/) and place them into [ProtoLua](./lua/ProtoLua/).
+The [generate_proto_lua.js](./generate_proto_lua.js) script can generate corresponding Lua files for all `.proto` files under the [protocol directory](./protocol/) and place them into [ProtoLua](./lua/ProtoLua/).
 
 These files should then be required in Lua code (e.g. [MsgHandlerLogic.lua](./lua/Msg/MsgHandlerLogic.lua)).
 
@@ -96,13 +96,13 @@ With the EmmyLua plugin, this enables:
 Example in MsgHandlerLogic.lua
 
 ```lua
-local proto_cmd = require("proto_cmd");
-local proto_database = require("proto_database");
-local proto_example = require("proto_example");
-local proto_ipc_stream = require("proto_ipc_stream");
-local proto_lua = require("proto_lua");
-local proto_message_head = require("proto_message_head");
-local proto_tunnel = require("proto_tunnel");
+local ProtoLuaCmd = require("ProtoLuaCmd");
+local ProtoLuaDatabase = require("ProtoLuaDatabase");
+local ProtoLuaExample = require("ProtoLuaExample");
+local ProtoLuaIpcStream = require("ProtoLuaIpcStream");
+local ProtoLuaLua = require("ProtoLuaLua");
+local ProtoLuaMessageHead = require("ProtoLuaMessageHead");
+local ProtoLuaTunnel = require("ProtoLuaTunnel");
 ```
 
 ## Message Handling in Lua

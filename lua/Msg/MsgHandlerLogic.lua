@@ -3,13 +3,13 @@
 ---@class MsgHandler:MsgHandlerType
 local MsgHandler = require("MsgHandlerData");
 
-local proto_cmd = require("proto_cmd");
-local proto_database = require("proto_database");
-local proto_example = require("proto_example");
-local proto_ipc_stream = require("proto_ipc_stream");
-local proto_lua = require("proto_lua");
-local proto_message_head = require("proto_message_head");
-local proto_tunnel = require("proto_tunnel");
+local ProtoLuaCmd = require("ProtoLuaCmd");
+local ProtoLuaDatabase = require("ProtoLuaDatabase");
+local ProtoLuaExample = require("ProtoLuaExample");
+local ProtoLuaIpcStream = require("ProtoLuaIpcStream");
+local ProtoLuaLua = require("ProtoLuaLua");
+local ProtoLuaMessageHead = require("ProtoLuaMessageHead");
+local ProtoLuaTunnel = require("ProtoLuaTunnel");
 
 local Log = require("Log")
 
