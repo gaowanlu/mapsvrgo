@@ -13,12 +13,12 @@
 ---@field AVANT_THISSERVICEINSTANCE_APPID_PARTS table|nil 返回本服务实例的{"大区","服","服务ID","实例ID"}
 ---@field INT32_MAX integer int32最大值=2147483647
 ---@field INT32_MIN integer int32最小值=-2147483648
----@field INT64_MAX number int64最大值=9223372036854775807
----@field INT64_MIN number int64最小值=-9223372036854775808
+---@field INT64_MAX string int64最大值="9223372036854775807"
+---@field INT64_MIN string int64最小值="-9223372036854775808"
 ---@field UINT32_MAX integer uint32最大值=4294967295
 ---@field UINT32_MIN integer uint32最小值=0
----@field UINT64_MAX number uint64最大值=18446744073709551615
----@field UINT64_MIN number uint64最小值=0
+---@field UINT64_MAX string uint64最大值="18446744073709551615"
+---@field UINT64_MIN string uint64最小值="0"
 ---@field DOUBLE_INTEGER_MAX number double类型精确表示最大整数 9007199254740991
 ---@field DOUBLE_INTEGER_MIN number double类型精确表示最小整数 -9007199254740992
 ---@field FLOAT_INTEGER_MAX number float类型精确表示最大整数 8388607
@@ -29,12 +29,12 @@ avant                          = avant or {};
 
 avant.INT32_MAX                = 2147483647;
 avant.INT32_MIN                = -2147483648;
-avant.INT64_MAX                = 9223372036854775807;
-avant.INT64_MIN                = -9223372036854775808;
+avant.INT64_MAX                = "9223372036854775807";
+avant.INT64_MIN                = "-9223372036854775808";
 avant.UINT32_MAX               = 4294967295;
 avant.UINT32_MIN               = 0;
-avant.UINT64_MAX               = 18446744073709551615;
-avant.UINT64_MIN               = 0;
+avant.UINT64_MAX               = "18446744073709551615";
+avant.UINT64_MIN               = "0";
 avant.DOUBLE_INTEGER_MAX       = 9007199254740991;
 avant.DOUBLE_INTEGER_MIN       = -9007199254740992;
 avant.FLOAT_INTEGER_MAX        = 8388607;

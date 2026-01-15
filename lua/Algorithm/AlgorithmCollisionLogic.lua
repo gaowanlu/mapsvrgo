@@ -19,10 +19,6 @@ function AlgorithmCollisionLogic.AABBCollision2D(box1, box2)
     );
 end
 
--- local box1 = { x = 0, y = 0, width = 100, height = 100 }
--- local box2 = { x = 50, y = 50, width = 100, height = 100 }
--- print(AlgorithmCollisionLogic.AABBCollision2D(box1, box2)) -- 输出 true
-
 ---@class AlgorithmCollisionCircle
 ---@field x number
 ---@field y number
@@ -39,10 +35,6 @@ function AlgorithmCollisionLogic.CircleCollision2D(circle1, circle2)
     return distance < (circle1.radius + circle2.radius);
 end
 
--- local circle1 = {x = 0, y = 0, radius = 50}
--- local circle2 = {x = 30, y = 30, radius = 50}
--- print(AlgorithmCollisionLogic.CircleCollision2D(circle1, circle2))  -- 输出 true
-
 --- 2D点在矩形内检测点是否在矩形内部
 ---@param x number
 ---@param y number
@@ -51,10 +43,6 @@ end
 function AlgorithmCollisionLogic.PointInAABB2D(x, y, box)
     return x >= box.x and x <= box.x + box.width and y >= box.y and y <= box.y + box.height;
 end
-
--- local point = {x = 50, y = 50}
--- local box = {x = 0, y = 0, width = 100, height = 100}
--- print(AlgorithmCollisionLogic.PointInAABB2D(point.x, point.y, box))  -- 输出 true
 
 --- 2D原与矩形的碰撞检测
 ---@param circle AlgorithmCollisionCircle
@@ -80,10 +68,6 @@ function AlgorithmCollisionLogic.CircleRectangleCollision2D(circle, box)
     return (dx * dx + dy * dy) < (circle.radius * circle.radius)
 end
 
--- local circle = { x = 150, y = 150, radius = 50 }
--- local box = { x = 100, y = 100, width = 100, height = 100 }
--- print(AlgorithmCollisionLogic.CircleRectangleCollision2D(circle, box))
-
 --- 判断点是否在圆形内
 ---@param px number
 ---@param py number
@@ -95,8 +79,90 @@ function AlgorithmCollisionLogic.PointInCircle2D(px, py, circle)
     return distance <= circle.radius
 end
 
--- local point = {x = 3, y = 4}      -- 点的坐标
--- local circle = {x = 0, y = 0, radius = 5}  -- 圆心坐标和半径
--- print(AlgorithmCollisionLogic.PointInCircle2D(point.x, point.y, circle))  -- 输出 true
+if not ... then -- 如果是直接运行而非被 require
+    ---@diagnostic disable-next-line: unnecessary-if
+    if true then
+        -- AABB 碰撞测试
+        local box1 = { x = 0, y = 0, width = 100, height = 100 }
+        local box2 = { x = 50, y = 50, width = 100, height = 100 }
+        print("expect true->", AlgorithmCollisionLogic.AABBCollision2D(box1, box2)) -- 输出 true
+
+        -- 测试不重叠的 AABB
+        local box3 = { x = 200, y = 200, width = 100, height = 100 }
+        print("expect false->", AlgorithmCollisionLogic.AABBCollision2D(box1, box3)) -- 输出 false
+    end
+
+    ---@diagnostic disable-next-line: unnecessary-if
+    if true then
+        -- 圆形碰撞测试
+        local circle1 = { x = 0, y = 0, radius = 50 }
+        local circle2 = { x = 30, y = 30, radius = 50 }
+        print("expect true->", AlgorithmCollisionLogic.CircleCollision2D(circle1, circle2)) -- 输出 true
+
+        -- 测试不重叠的圆形
+        local circle3 = { x = 200, y = 200, radius = 50 }
+        print("expect false->", AlgorithmCollisionLogic.CircleCollision2D(circle1, circle3)) -- 输出 false
+    end
+
+    ---@diagnostic disable-next-line: unnecessary-if
+    if true then
+        -- 测试点是否在矩形内部
+        local point = { x = 50, y = 50 }
+        local box = { x = 0, y = 0, width = 100, height = 100 }
+        print("expect true->", AlgorithmCollisionLogic.PointInAABB2D(point.x, point.y, box)) -- 输出 true
+
+        -- 测试点不在矩形内部
+        local point2 = { x = 150, y = 150 }
+        print("expect false->", AlgorithmCollisionLogic.PointInAABB2D(point2.x, point2.y, box)) -- 输出 false
+    end
+
+    ---@diagnostic disable-next-line: unnecessary-if
+    if true then
+        -- 圆形与矩形的碰撞检测
+        local circle = { x = 150, y = 150, radius = 50 }
+        local box = { x = 100, y = 100, width = 100, height = 100 }
+        print("expect true->", AlgorithmCollisionLogic.CircleRectangleCollision2D(circle, box)) -- 输出 true
+
+        -- 圆形与矩形不碰撞
+        local circle2 = { x = 300, y = 300, radius = 50 }
+        print("expect false->", AlgorithmCollisionLogic.CircleRectangleCollision2D(circle2, box)) -- 输出 false
+    end
+
+    ---@diagnostic disable-next-line: unnecessary-if
+    if true then
+        -- 测试点是否在圆形内部
+        local point = { x = 3, y = 4 }                                                            -- 点的坐标
+        local circle = { x = 0, y = 0, radius = 5 }                                               -- 圆心坐标和半径
+        print("expect true->", AlgorithmCollisionLogic.PointInCircle2D(point.x, point.y, circle)) -- 输出 true
+
+        -- 测试点不在圆形内部
+        local point2 = { x = 6, y = 6 }
+        print("expect false->", AlgorithmCollisionLogic.PointInCircle2D(point2.x, point2.y, circle)) -- 输出 false
+    end
+
+    ---@diagnostic disable-next-line: unnecessary-if
+    if true then
+        -- 测试更多的 AABB 碰撞
+        local box1 = { x = 0, y = 0, width = 150, height = 150 }
+        local box2 = { x = 100, y = 100, width = 200, height = 200 }
+        print("expect true->", AlgorithmCollisionLogic.AABBCollision2D(box1, box2)) -- 输出 true
+
+        -- 测试超大矩形碰撞
+        local box3 = { x = 1000, y = 1000, width = 500, height = 500 }
+        print("expect false->", AlgorithmCollisionLogic.AABBCollision2D(box1, box3)) -- 输出 false
+    end
+
+    ---@diagnostic disable-next-line: unnecessary-if
+    if true then
+        -- 圆形碰撞在不同位置的测试
+        local circle1 = { x = 10, y = 10, radius = 5 }
+        local circle2 = { x = 15, y = 10, radius = 5 }
+        print("expect true->", AlgorithmCollisionLogic.CircleCollision2D(circle1, circle2)) -- 输出 true
+
+        -- 完全不重叠的圆形
+        local circle3 = { x = 100, y = 100, radius = 5 }
+        print("expect false->", AlgorithmCollisionLogic.CircleCollision2D(circle1, circle3)) -- 输出 false
+    end
+end
 
 return AlgorithmCollisionLogic;

@@ -3,6 +3,8 @@ local Map3D = require("Map3DData");
 local Log = require("Log");
 local TimeMgr = require("TimeMgrLogic");
 local Map3DOctree = require("Map3DOctreeLogic");
+local NumericBigInt = require("NumericBigIntLogic");
+local AlgorithmRandom = require("AlgorithmRandomLogic");
 
 -- 构造新的3DMap对象
 ---@param mapId integer 地图ID
