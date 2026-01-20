@@ -2,11 +2,11 @@ CREATE DATABASE IF NOT EXISTS dbname;
 use dbname;
 
 CREATE TABLE IF NOT EXISTS dbuserrecord (
-  id   BIGINT PRIMARY KEY,
-  userId VARCHAR(64) NOT NULL,
-  password VARCHAR(64) NOT NULL,
-  baseInfo BLOB
-);
+  id   BIGINT PRIMARY KEY COMMENT '记录唯一ID由时间戳生成',
+  userId VARCHAR(64) NOT NULL COMMENT '用户ID',
+  password VARCHAR(64) NOT NULL '用户密码',
+  baseInfo BLOB COMMENT 'protobuf数据序列化后的数据'
+) Engine=InnoDB CHARSET=utf8 COMMENT '用户记录数据表';
 
 ALTER TABLE dbuserrecord
 ADD UNIQUE KEY uk_userId (userId);
