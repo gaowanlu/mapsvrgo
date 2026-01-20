@@ -294,4 +294,4 @@ Once connected, execution will pause when `Other_dbg.breakHere()` is reached.
 
 ## FAQ
 
-[Frequently Asked Questions](./FQA.md)
+[Frequently Asked Questions](./FAQ.md)
