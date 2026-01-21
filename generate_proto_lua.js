@@ -263,8 +263,9 @@ function toProtoFormat(str) {
  * 处理单个 proto 文件
  * @param {*} protoFile 要处理的文件路径
  * @param {*} outDir 输出路径
+ * @param {*} 是否需要require内部含有枚举定义
  */
-function processProtoFile(protoFile, outDir) {
+function processProtoFile(protoFile, outDir, protoImport) {
   // 同步读出输入文件全部文本内容
   const protoContent = fs.readFileSync(protoFile, 'utf8');
   // 解析proto文件内容
@@ -283,6 +284,10 @@ function processProtoFile(protoFile, outDir) {
   const outFile = path.join(outDir, `${baseName}.lua`);
   // 同步写目标lua文件
   fs.writeFileSync(outFile, luaCode);
+
+  if (Object.entries(enums).length > 0) {
+    protoImport.push(baseName);
+  }
 
   console.log(`生成成功: ${outFile}`);
 }
@@ -323,6 +328,8 @@ function main() {
   // 读取inputPath类型 可能是目录也可能是文件
   const stat = fs.statSync(inputPath);
 
+  let protoImport = [];
+
   // 单个proto文件
   if (stat.isFile()) {
     if (!inputPath.endsWith('.proto')) {
@@ -331,8 +338,7 @@ function main() {
     }
 
     // 只处理单个proto文件
-    processProtoFile(inputPath, outDir);
-    return;
+    processProtoFile(inputPath, outDir, protoImport);
 
   }
   else if (stat.isDirectory()) {  // 处理输入文件夹下的proto文件
@@ -348,16 +354,29 @@ function main() {
       const fullPath = path.join(inputPath, file);
 
       // 处理单个文件
-      processProtoFile(fullPath, outDir);
+      processProtoFile(fullPath, outDir, protoImport);
     });
 
-    console.log('处理完成');
-    return;
-  }
-  else {
+
+  } else {
     console.error('输入路径既不是文件也不是目录:', inputPath);
     process.exit(1);
   }
+
+  console.log("内部含有枚举的Lua文件 ", protoImport);
+
+  console.log("生成ProtoLuaImport")
+
+  {
+    let protoLuaImportStr = "";
+    for (let baseName of protoImport) {
+      protoLuaImportStr += `require("${baseName}");\n`;
+    }
+    fs.writeFileSync(outDir + "/ProtoLuaImport.lua", protoLuaImportStr);
+  }
+
+  console.log('处理完成');
+
 }
 
 main();

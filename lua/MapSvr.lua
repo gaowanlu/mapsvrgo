@@ -1,24 +1,28 @@
 ---@class MapSvrType
----@field safeStop boolean
----@field IsSafeStop function
+---@field safeStop boolean 安全停服是否已经被触发
+---@field IsSafeStop function 返回boolean安全停服是否已经被触发
 
 ---@class MapSvr:MapSvrType
 MapSvr = MapSvr or {
     safeStop = false
 };
 
+require("ProtoLuaImport");
 local Log = require("Log");
-local Debug = require("DebugLogic")
 local MsgHandler = require("MsgHandlerLogic")
 local PlayerMgr = require("PlayerMgrLogic")
 local MapMgr = require("MapMgrLogic")
 local FrameSyncRoomMgr = require("FrameSyncRoomMgrLogic")
 local Map3DMgr = require("Map3DMgrLogic")
 
+--- 线程被启动时只调用一次
+---@return nil
 function MapSvr.OnInit()
     MapSvr.safeStop = false;
 end
 
+--- 线程被终止时触发一次
+---@return nil
 function MapSvr.OnStop()
     PlayerMgr.OnStop()
     MapMgr.OnStop()
@@ -26,6 +30,8 @@ function MapSvr.OnStop()
     Map3DMgr.OnStop();
 end
 
+--- 线程Tick频率以配置文件变量epoll_wait_time控制
+---@return nil
 function MapSvr.OnTick()
     PlayerMgr.OnTick()
     MapMgr.OnTick()
@@ -33,6 +39,8 @@ function MapSvr.OnTick()
     Map3DMgr.OnTick();
 end
 
+--- 安全停服，需要在OnStop前被调用，做一些清理工作
+---@return nil
 function MapSvr.OnSafeStop()
     Log:Error("MapSvr.OnSafeStop()");
     MapSvr.safeStop = true;
@@ -42,11 +50,14 @@ function MapSvr.OnSafeStop()
     Map3DMgr.OnSafeStop();
 end
 
+--- 是否已经进行了安全停服
 ---@return boolean
 function MapSvr.IsSafeStop()
     return MapSvr.safeStop;
 end
 
+--- 当服务器进程被kill -10 或 线程Init时被触发
+---@return nil
 function MapSvr.OnReload()
     -- hot load PlayerLogic scriptss
     local reloadList = {}
@@ -57,17 +68,19 @@ function MapSvr.OnReload()
     table.insert(reloadList, "PlayerCmptInfoLogic")
     table.insert(reloadList, "PlayerCmptBagLogic")
     table.insert(reloadList, "PlayerCmptMapLogic")
-    table.insert(reloadList, "PlayerCmptMap3DLogic");
+    table.insert(reloadList, "PlayerCmptMap3DLogic")
     table.insert(reloadList, "MapLogic")
     table.insert(reloadList, "MapMgrLogic")
     table.insert(reloadList, "FrameSyncRoomLogic")
     table.insert(reloadList, "FrameSyncRoomMgrLogic")
+    table.insert(reloadList, "MsgHandlerFromUDPLogic")
+    table.insert(reloadList, "MsgHandlerFromOtherLogic");
+    table.insert(reloadList, "MsgHandlerFromClientLogic");
     table.insert(reloadList, "MsgHandlerLogic")
     table.insert(reloadList, "ConfigTableMgrLogic")
     table.insert(reloadList, "TimeMgrLogic")
-    table.insert(reloadList, "Map3DLogic");
-    table.insert(reloadList, "Map3DMgrLogic");
-
+    table.insert(reloadList, "Map3DLogic")
+    table.insert(reloadList, "Map3DMgrLogic")
 
     for i, name in ipairs(reloadList) do
         package.loaded[name] = nil;
@@ -82,18 +95,26 @@ function MapSvr.OnReload()
         end
     end
 
+    MsgHandler:OnReload();
     MapMgr.OnReload();
     FrameSyncRoomMgr.OnReload();
     Map3DMgr.OnReload();
 end
 
+--- 当C++给Lua虚拟机传递新的Protobuf消息
 ---@param msg_type integer
 ---@param cmd integer
 ---@param message table
 ---@param uint64_param1_string string
 ---@param int64_param2_string string
 ---@param str_param3 string
-function MapSvr.OnLuaVMRecvMessage(msg_type, cmd, message, uint64_param1_string, int64_param2_string, str_param3)
+---@return nil
+function MapSvr.OnLuaVMRecvMessage(msg_type,
+                                   cmd,
+                                   message,
+                                   uint64_param1_string,
+                                   int64_param2_string,
+                                   str_param3)
     -- Log:Error("OnLuaVMRecvMessage cmd[%d] uint64_param1_string[%s] int64_param2_string[%s] str_param3[%s]", cmd, uint64_param1_string, int64_param2_string, str_param3)
     if msg_type == 1 then -- 客户端
         local clientGID = uint64_param1_string
