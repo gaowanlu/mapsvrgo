@@ -3,6 +3,7 @@
 ---@field bag PlayerCmptBag
 ---@field map PlayerCmptMap
 ---@field map3d PlayerCmptMap3D
+---@field frameSyncRoom PlayerCmptFrameSyncRoom
 
 ---@class PlayerCacheDataType
 ---@field id string playerId

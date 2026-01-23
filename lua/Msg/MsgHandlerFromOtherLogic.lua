@@ -2,7 +2,6 @@ local MsgHandler = require("MsgHandlerLogic")
 local MapSvr = require("MapSvr");
 local Log = require("Log");
 local Debug = require("DebugLogic");
-local ErrCode = require("ErrCode");
 
 ---@type table<number,function>
 MsgHandlerFromOther = {};
@@ -55,7 +54,7 @@ MsgHandlerFromOther[ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGI
     if MapSvr.IsSafeStop() == true then
         ---@type ProtoLua_ProtoCSResLogin
         local res = {
-            ret = ErrCode.ERR_SERVICE_SAFESTOPED,
+            ret = ProtoLua_ProtoErrCode.EERR_SERVICE_SAFESTOPED,
             sessionId = playerId
         };
         MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_LOGIN, res);
@@ -65,16 +64,16 @@ MsgHandlerFromOther[ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_SELECT_DBUSERRECORD_LOGI
     -- 判断密码是否正确
     ---@type ProtoLua_ProtoCSResLogin
     local protoCSResLogin = {
-        ret = ErrCode.OK,
+        ret = ProtoLua_ProtoErrCode.OK,
         sessionId = playerId
     };
 
     local PlayerMgr = require("PlayerMgrLogic");
 
     if message.ret ~= 0 then
-        protoCSResLogin.ret = ErrCode.ERR_USERID_OR_PASSWORD_NOTMATCH;
+        protoCSResLogin.ret = ProtoLua_ProtoErrCode.ERR_USERID_OR_PASSWORD_NOTMATCH;
     elseif message.password ~= message.userRecord.password then
-        protoCSResLogin.ret = ErrCode.ERR_USERID_OR_PASSWORD_NOTMATCH;
+        protoCSResLogin.ret = ProtoLua_ProtoErrCode.ERR_USERID_OR_PASSWORD_NOTMATCH;
     elseif not PlayerMgr.IsPlayerIdOnline(playerId) then
         Log:Error("Login callback playerId %s not online", playerId);
     elseif nil ~= PlayerMgr.GetPlayerByPlayerId(playerId) then

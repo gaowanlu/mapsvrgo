@@ -6,7 +6,8 @@
       "dbsvrgo",
       "config",
       "avant",
-      "avant_dir"
+      "avant_dir",
+      "lua_demo"
     ]
   }
 }

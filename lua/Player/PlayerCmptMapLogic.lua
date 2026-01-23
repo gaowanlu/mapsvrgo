@@ -11,8 +11,6 @@ local TimeMgr = require("TimeMgrLogic")
 
 local MapMgr = require("MapMgrLogic")
 
-local ErrCode = require("ErrCode");
-
 ---@param owner Player
 ---@return PlayerCmptMap
 function PlayerCmptMap.new(owner)
@@ -58,16 +56,16 @@ end
 function PlayerCmptMap:EnterNewMap(mapId)
     local map = MapMgr.GetMap(mapId);
     if map == nil then
-        return ErrCode.ERR_TARGET_MAP_NOT_FOUND;
+        return ProtoLua_ProtoErrCode.ERR_TARGET_MAP_NOT_FOUND;
     end
     if map:PlayerJoinMap(self:GetPlayer():GetPlayerID(), self:GetPlayer():GetUserId()) ~= true then
-        return ErrCode.ERR_UNKNOW;
+        return ProtoLua_ProtoErrCode.ERR_UNKNOW;
     end
 
     local mapPlayer = map:GetMapPlayerByUserId(self:GetPlayer():GetUserId());
     if mapPlayer == nil then
         Log:Error("mapPlayer == nil");
-        return ErrCode.ERR_UNKNOW;
+        return ProtoLua_ProtoErrCode.ERR_UNKNOW;
     end
 
     -- 设置玩家所在的地图ID
@@ -89,7 +87,7 @@ function PlayerCmptMap:EnterNewMap(mapId)
     MsgHandler:Send2Client(self:GetPlayer():GetClientGID(), self:GetPlayer():GetWorkerIdx(),
         ProtoLua_ProtoCmd.PROTO_CMD_CS_MAP_NOTIFY_INIT_DATA, protoCSMapNotifyInitData);
 
-    return ErrCode.OK;
+    return ProtoLua_ProtoErrCode.OK;
 end
 
 ---@param mapId integer
@@ -104,7 +102,7 @@ end
 ---@return integer
 function PlayerCmptMap:MapLeaveReq()
     self:LeaveCurrMap()
-    return ErrCode.OK
+    return ProtoLua_ProtoErrCode.OK;
 end
 
 ---@return integer

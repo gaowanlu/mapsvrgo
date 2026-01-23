@@ -1,6 +1,5 @@
 local Log = require("Log")
 local PlayerMgr = require("PlayerMgrLogic")
-local ErrCode = require("ErrCode")
 local MsgHandler = require("MsgHandlerLogic")
 local MapSvr = require("MapSvr");
 
@@ -116,7 +115,7 @@ MsgHandlerFromClient[ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_LOGIN] = function(player
     if MapSvr.IsSafeStop() == true then
         ---@type ProtoLua_ProtoCSResLogin
         local res = {
-            ret = ErrCode.ERR_SERVICE_SAFESTOPED,
+            ret = ProtoLua_ProtoErrCode.EERR_SERVICE_SAFESTOPED,
             sessionId = playerId
         };
         MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_LOGIN, res);
@@ -296,20 +295,20 @@ MsgHandlerFromClient[ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_CREATE_USER] = function(
     if MapSvr.IsSafeStop() == true then
         ---@type ProtoLua_ProtoCSResCreateUser
         local res = avant.CreateNewProtobufByCmd(ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER);
-        res.ret = ErrCode.ERR_SERVICE_SAFESTOPED;
+        res.ret = ProtoLua_ProtoErrCode.EERR_SERVICE_SAFESTOPED;
 
         MsgHandler:Send2Client(clientGID, workerIdx, ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER, res);
         return;
     end
 
-    local ret = ErrCode.OK;
+    local ret = ProtoLua_ProtoErrCode.OK;
     if #message.userId <= 0 or #message.userId > 64 then
-        ret = ErrCode.ERR_USERID_INPUT_INVALID;
+        ret = ProtoLua_ProtoErrCode.EERR_USERID_INPUT_INVALID;
     end
     if #message.password <= 0 or #message.password > 64 then
-        ret = ErrCode.ERR_PASSWORD_INPUT_INVALID;
+        ret = ProtoLua_ProtoErrCode.ERR_PASSWORD_INPUT_INVALID;
     end
-    if ret ~= ErrCode.OK then
+    if ret ~= ProtoLua_ProtoErrCode.OK then
         ---@type ProtoLua_ProtoCSResCreateUser
         local res = avant.CreateNewProtobufByCmd(ProtoLua_ProtoCmd.PROTO_CMD_CS_RES_CREATE_USER);
         res.ret = ret;

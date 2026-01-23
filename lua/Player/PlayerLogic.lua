@@ -8,6 +8,7 @@ local PlayerCmptInfo = require("PlayerCmptInfoLogic")
 local PlayerCmptBag = require("PlayerCmptBagLogic")
 local PlayerCmptMap = require("PlayerCmptMapLogic")
 local PlayerCmptMap3D = require("PlayerCmptMap3DLogic")
+local PlayerCmptFrameSyncRoom = require("PlayerCmptFrameSyncRoomLogic")
 local ConfigTableMgr = require("ConfigTableMgrLogic")
 
 ---Player构造工厂
@@ -30,10 +31,11 @@ function Player.new(playerId)
 
     -- Player下组件挂载
     self.components = {
-        info  = PlayerCmptInfo.new(self),
-        bag   = PlayerCmptBag.new(self),
-        map   = PlayerCmptMap.new(self),
-        map3d = PlayerCmptMap3D.new(self)
+        info          = PlayerCmptInfo.new(self),
+        bag           = PlayerCmptBag.new(self),
+        map           = PlayerCmptMap.new(self),
+        map3d         = PlayerCmptMap3D.new(self),
+        frameSyncRoom = PlayerCmptFrameSyncRoom.new(self)
     };
 
     return self

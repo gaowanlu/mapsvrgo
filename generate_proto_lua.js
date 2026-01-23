@@ -47,6 +47,8 @@ function parseProto(protoContent) {
 
   let pendingMessage = null;
   let pendingEnum = null;
+  // 收集注释
+  let pendingComments = [];
 
   // 按行分割文件文本内容
   const lines = protoContent.split('\n');
@@ -55,8 +57,18 @@ function parseProto(protoContent) {
   lines.forEach(rawLine => {
     // 去掉行开头与末尾的空格
     const line = rawLine.trim();
-    // 空行或者为注释行则跳过
-    if (!line || line === "" || line.startsWith('//')) return;
+
+    // 空行则跳过，但清空待处理注释
+    if (!line || line === "") {
+      return;
+    }
+
+    // 收集注释行
+    if (line.startsWith('//')) {
+      const comment = line.replace(/^\/\/\s*/, ''); // 去掉 // 和后面的空格
+      pendingComments.push(comment);
+      return;
+    }
 
     // 如果行开头是某些特殊的关键词则跳过处理行
     if (
@@ -64,6 +76,7 @@ function parseProto(protoContent) {
       line.startsWith('package') ||
       line.startsWith('option')
     ) {
+      pendingComments = []; // 清空注释
       return;
     }
 
@@ -97,8 +110,12 @@ function parseProto(protoContent) {
       if (pendingMessage) {
         // 将但当前正在处理的message状态进行切换
         currentMessage = pendingMessage;
-        messages[currentMessage] = [];
+        messages[currentMessage] = {
+          fields: [],
+          comment: pendingComments.join(' ') // 保存 message 的注释
+        };
         pendingMessage = null;
+        pendingComments = [];
         return;
       }
 
@@ -106,8 +123,12 @@ function parseProto(protoContent) {
       if (pendingEnum) {
         // 将但当前正在处理的enum状态进行切换
         currentEnum = pendingEnum;
-        enums[currentEnum] = [];
+        enums[currentEnum] = {
+          values: [],
+          comment: pendingComments.join(' ') // 保存 enum 的注释
+        };
         pendingEnum = null;
+        pendingComments = [];
         return;
       }
     }
@@ -115,15 +136,17 @@ function parseProto(protoContent) {
     // 目前正在处理的是enum 按照枚举字段处理
     if (currentEnum) {
       // like
-      // ENUM_ITEM=1;
-      // ENUM_ITEM =1;
-      // ENUM_ITEM = 1 ;
+      // ENUM_ITEM = 1;
+      // ENUM_ITEM = 2;
+      // ENUM_ITEM = 3 ;
       const enumItem = line.match(/^(\w+)\s*=\s*(\d+)\s*;/);
       if (enumItem) {
-        enums[currentEnum].push({
+        enums[currentEnum].values.push({
           name: enumItem[1],
           value: enumItem[2],
+          comment: pendingComments.join(' ') // 保存枚举值的注释
         });
+        pendingComments = [];
         return;
       }
     }
@@ -132,6 +155,7 @@ function parseProto(protoContent) {
     const oneofMatch = line.match(/^oneof\s+(\w+)/);
     if (oneofMatch && currentMessage) {
       currentOneof = oneofMatch[1];
+      pendingComments = [];
       return;
     }
 
@@ -145,7 +169,9 @@ function parseProto(protoContent) {
           protoType: oneofField[1],
           luaType: protoToLuaType(oneofField[1]), // 字段对应lua类型
           oneof: currentOneof, // 是否是message内的oneof字段
+          comment: pendingComments.join(' ') // 保存字段注释
         });
+        pendingComments = [];
         return;
       }
     }
@@ -159,13 +185,14 @@ function parseProto(protoContent) {
       const fieldName = repeatedMatch[2];
       const luaType = protoToLuaType(fieldType);
 
-      messages[currentMessage].push({
+      messages[currentMessage].fields.push({
         fieldName,
         protoType: fieldType,
         luaType: `table<integer,${luaType}>`, // repeated字段按lua数组处理
         repeated: true,
+        comment: pendingComments.join(' ') // 保存字段注释
       });
-
+      pendingComments = [];
       return;
     }
 
@@ -174,12 +201,13 @@ function parseProto(protoContent) {
       const fieldMatch = line.match(/^(\w+)\s+(\w+)\s*=\s*\d+/);
 
       if (fieldMatch) {
-        messages[currentMessage].push({
+        messages[currentMessage].fields.push({
           fieldName: fieldMatch[2],
           protoType: fieldMatch[1],
           luaType: protoToLuaType(fieldMatch[1]),
+          comment: pendingComments.join(' ') // 保存字段注释
         });
-
+        pendingComments = [];
         return;
       }
     }
@@ -194,6 +222,7 @@ function parseProto(protoContent) {
       } else if (currentMessage) {
         currentMessage = null;
       }
+      pendingComments = [];
     }
   });
 
@@ -210,28 +239,49 @@ function generateLuaClasses(messages, enums) {
   let out = '';
 
   // 处理每个枚举类型
-  for (const [name, values] of Object.entries(enums)) {
+  for (const [name, enumData] of Object.entries(enums)) {
+    // 输出枚举的注释
+    if (enumData.comment) {
+      out += `--- ${enumData.comment}\n`;
+    }
     out += `---@alias ${PREFIX}${name} table<string,integer>\n`;
     out += `${PREFIX}${name} = {\n`;
-    values.forEach(v => {
+
+    enumData.values.forEach(v => {
+      // 输出枚举值得注释
+      if (v.comment) {
+        out += `  --- ${v.comment}\n`;
+      }
       out += `  ${v.name} = ${v.value},\n`;
     });
     out += `}\n\n`;
   }
 
   // message类型
-  for (const [msg, fields] of Object.entries(messages)) {
+  for (const [msg, msgData] of Object.entries(messages)) {
+    // 输出 message 的注释
+    if (msgData.comment) {
+      out += `--- ${msgData.comment}\n`;
+    }
+
     out += `---@class ${PREFIX}${msg}\n`;
-    fields.forEach(f => {
+
+    msgData.fields.forEach(f => {
+      // 构建注释部分
+      let commentPart = f.protoType;
+      if (f.comment) {
+        commentPart += ` ${f.comment}`;
+      }
+
       // oneof字段
       if (f.oneof) {
-        out += `---@field ${f.fieldName} ${f.luaType}|nil ${f.protoType} -- oneof ${f.oneof}\n`;
+        out += `---@field ${f.fieldName} ${f.luaType}|nil ${commentPart} -- oneof ${f.oneof}\n`;
       }
       else if (f.repeated) {
-        out += `---@field ${f.fieldName} ${f.luaType} repeated ${f.protoType}\n`
+        out += `---@field ${f.fieldName} ${f.luaType} repeated ${commentPart}\n`;
       }
       else { // 非oneof字段
-        out += `---@field ${f.fieldName} ${f.luaType} ${f.protoType}\n`;
+        out += `---@field ${f.fieldName} ${f.luaType} ${commentPart}\n`;
       }
     });
     out += `\n`;
@@ -270,6 +320,9 @@ function processProtoFile(protoFile, outDir, protoImport) {
   const protoContent = fs.readFileSync(protoFile, 'utf8');
   // 解析proto文件内容
   const { messages, enums } = parseProto(protoContent);
+  // console.log("messages=>", JSON.stringify(messages));
+  // console.log("enums=>", JSON.stringify(enums));
+
   // 生成lua文件内容
   const luaCode = generateLuaClasses(messages, enums);
   if (luaCode === '') {
