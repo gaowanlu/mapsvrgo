@@ -17,7 +17,7 @@ end
 ---@return ProtoLua_DbPlayerBaseInfo
 function PlayerCmptInfo:GetDbBaseInfoData()
     local dbUserRecord = self.owner:GetDbUserRecord();
-    return dbUserRecord.baseInfo;
+    return dbUserRecord.base_info;
 end
 
 ---@param lv integer

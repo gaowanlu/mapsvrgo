@@ -2,6 +2,8 @@ package mapper
 
 import (
 	"fmt"
+	"log"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -10,6 +12,18 @@ import (
 
 	p "dbsvrgo/proto_res"
 )
+
+// camelToSnakeCase 将驼峰命名转为下划线命名
+func camelToSnakeCase(str string) string {
+	// 正则表达式匹配大写字母，并在其前添加下划线
+	re := regexp.MustCompile("([a-z])([A-Z])")
+	// 替换为小写字母，并用下划线分隔
+	str = re.ReplaceAllString(str, "${1}_${2}")
+	// 转换为全小写
+	res := strings.ToLower(str)
+	log.Println("func camelToSnakeCase ", str, " ", res)
+	return res
+}
 
 // 表字段名称
 type FieldInfo struct {
@@ -39,9 +53,9 @@ func getMeta(msg proto.Message) *MetaInfo {
 	m := msg.ProtoReflect()
 	desc := m.Descriptor()
 
-	// 表名统一小写
+	// 表名统一SnakeCase
 	meta := &MetaInfo{
-		Table: strings.ToLower(string(desc.Name())),
+		Table: camelToSnakeCase(string(desc.Name())),
 	}
 
 	// 消息内部字段

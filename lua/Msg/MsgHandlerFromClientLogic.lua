@@ -325,7 +325,7 @@ MsgHandlerFromClient[ProtoLua_ProtoCmd.PROTO_CMD_CS_REQ_CREATE_USER] = function(
     insertDbUserRecordReq.clientGID = clientGID;
     insertDbUserRecordReq.workerIdx = workerIdx;
     insertDbUserRecordReq.dbUserRecord.id = tostring(TimeMgr.GetMS());
-    insertDbUserRecordReq.dbUserRecord.userId = message.userId;
+    insertDbUserRecordReq.dbUserRecord.user_id = message.userId;
     insertDbUserRecordReq.dbUserRecord.password = message.password;
 
     MsgHandler:Send2IPC(avant:GetDBSvrGoAppID(),

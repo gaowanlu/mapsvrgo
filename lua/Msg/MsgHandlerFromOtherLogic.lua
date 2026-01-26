@@ -29,7 +29,7 @@ MsgHandlerFromOther[ProtoLua_ProtoCmd.PROTO_CMD_DBSVRGO_INSERT_DBUSERRECORD_RES]
     ---@type ProtoLua_ProtoCSResCreateUser
     local protoCSResCreateUser = {
         ret = message.ret,
-        userId = message.dbUserRecord.userId,
+        userId = message.dbUserRecord.user_id,
         password = message.dbUserRecord.password,
         userRecordID = message.dbUserRecord.id
     };

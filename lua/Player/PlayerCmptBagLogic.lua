@@ -16,7 +16,7 @@ end
 
 ---@return ProtoLua_DbPlayerBag
 function PlayerCmptBag:GetBagData()
-    return self:GetPlayer():GetDbUserRecord().baseInfo.bagData;
+    return self:GetPlayer():GetDbUserRecord().base_info.bagData;
 end
 
 ---@param itemID integer

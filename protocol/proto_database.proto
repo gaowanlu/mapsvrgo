@@ -33,9 +33,9 @@ message DbUserRecord
 {
     DbOpType op = 1;
     int64 id = 2;
-    string userId = 3;
+    string user_id = 3;
     string password = 4;
-    DbPlayerBaseInfo baseInfo = 5;
+    DbPlayerBaseInfo base_info = 5;
 }
 
 message SelectDbUserRecordReq

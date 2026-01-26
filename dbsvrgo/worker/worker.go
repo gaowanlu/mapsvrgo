@@ -342,7 +342,7 @@ func (w *Worker) handleSelectDbUserRecordLoginReq(pkg *proto_res.ProtoPackage) {
 	res.Password = req.Password
 	res.Ret = 0
 
-	selectRes, err := w.SelectRaw(&proto_res.DbUserRecord{}, "userId=? limit 1", req.UserId)
+	selectRes, err := w.SelectRaw(&proto_res.DbUserRecord{}, "user_id=? limit 1", req.UserId)
 	if err != nil {
 		log.Println("select error:", err)
 		res.Ret = -1
