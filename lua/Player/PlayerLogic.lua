@@ -8,7 +8,7 @@ local PlayerCmptInfo = require("PlayerCmptInfoLogic")
 local PlayerCmptBag = require("PlayerCmptBagLogic")
 local PlayerCmptMap = require("PlayerCmptMapLogic")
 local PlayerCmptMap3D = require("PlayerCmptMap3DLogic")
-local PlayerCmptFrameSyncRoom = require("PlayerCmptFrameSyncRoomLogic")
+local PlayerCmptFSRoom = require("PlayerCmptFSRoomLogic")
 local ConfigTableMgr = require("ConfigTableMgrLogic")
 
 ---Player构造工厂
@@ -35,7 +35,7 @@ function Player.new(playerId)
         bag           = PlayerCmptBag.new(self),
         map           = PlayerCmptMap.new(self),
         map3d         = PlayerCmptMap3D.new(self),
-        frameSyncRoom = PlayerCmptFrameSyncRoom.new(self)
+        FSRoom = PlayerCmptFSRoom.new(self)
     };
 
     return self

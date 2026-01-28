@@ -12,7 +12,7 @@ local Log = require("Log");
 local MsgHandler = require("MsgHandlerLogic")
 local PlayerMgr = require("PlayerMgrLogic")
 local MapMgr = require("MapMgrLogic")
-local FrameSyncRoomMgr = require("FrameSyncRoomMgrLogic")
+local FSRoomMgr = require("FSRoomMgrLogic")
 local Map3DMgr = require("Map3DMgrLogic")
 
 --- 线程被启动时只调用一次
@@ -26,7 +26,7 @@ end
 function MapSvr.OnStop()
     PlayerMgr.OnStop()
     MapMgr.OnStop()
-    FrameSyncRoomMgr.OnStop()
+    FSRoomMgr.OnStop()
     Map3DMgr.OnStop();
 end
 
@@ -35,7 +35,7 @@ end
 function MapSvr.OnTick()
     PlayerMgr.OnTick()
     MapMgr.OnTick()
-    FrameSyncRoomMgr.OnTick()
+    FSRoomMgr.OnTick()
     Map3DMgr.OnTick();
 end
 
@@ -46,7 +46,7 @@ function MapSvr.OnSafeStop()
     MapSvr.safeStop = true;
     PlayerMgr.OnSafeStop();
     MapMgr.OnSafeStop();
-    FrameSyncRoomMgr.OnSafeStop();
+    FSRoomMgr.OnSafeStop();
     Map3DMgr.OnSafeStop();
 end
 
@@ -69,11 +69,11 @@ function MapSvr.OnReload()
     table.insert(reloadList, "PlayerCmptBagLogic")
     table.insert(reloadList, "PlayerCmptMapLogic")
     table.insert(reloadList, "PlayerCmptMap3DLogic")
-    table.insert(reloadList, "PlayerCmptFrameSyncRoomLogic")
+    table.insert(reloadList, "PlayerCmptFSRoomLogic")
     table.insert(reloadList, "MapLogic")
     table.insert(reloadList, "MapMgrLogic")
-    table.insert(reloadList, "FrameSyncRoomLogic")
-    table.insert(reloadList, "FrameSyncRoomMgrLogic")
+    table.insert(reloadList, "FSRoomLogic")
+    table.insert(reloadList, "FSRoomMgrLogic")
     table.insert(reloadList, "MsgHandlerFromUDPLogic")
     table.insert(reloadList, "MsgHandlerFromOtherLogic");
     table.insert(reloadList, "MsgHandlerFromClientLogic");
@@ -98,7 +98,7 @@ function MapSvr.OnReload()
 
     MsgHandler:OnReload();
     MapMgr.OnReload();
-    FrameSyncRoomMgr.OnReload();
+    FSRoomMgr.OnReload();
     Map3DMgr.OnReload();
 end
 

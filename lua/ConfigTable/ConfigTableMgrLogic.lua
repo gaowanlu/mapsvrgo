@@ -38,7 +38,7 @@ function ConfigTableMgr.Map3DConfig:GetMap3DIdAt(iIdx)
     return self.mapIdList[iIdx];
 end
 
-ConfigTableMgr.FrameSyncRoomConfig = {
+ConfigTableMgr.FSRoomConfig = {
     roomIdList = {
         6,
         7
@@ -46,13 +46,13 @@ ConfigTableMgr.FrameSyncRoomConfig = {
 };
 
 ---@return integer
-function ConfigTableMgr.FrameSyncRoomConfig:GetRoomIdCount()
+function ConfigTableMgr.FSRoomConfig:GetRoomIdCount()
     return #self.roomIdList
 end
 
 ---@param iIdx integer
 ---@return integer
-function ConfigTableMgr.FrameSyncRoomConfig:GetRoomIdAt(iIdx)
+function ConfigTableMgr.FSRoomConfig:GetRoomIdAt(iIdx)
     ---@diagnostic disable-next-line: return-type-mismatch
     return self.roomIdList[iIdx];
 end

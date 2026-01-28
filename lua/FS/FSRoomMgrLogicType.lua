@@ -1,0 +1,2 @@
+---@class FSRoomMgrType
+---@field rooms FSRoom
