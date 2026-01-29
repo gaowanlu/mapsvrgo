@@ -3,19 +3,19 @@ package db
 import (
 	"database/sql"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 )
 
 // DB 是全局数据库连接池变量，程序其他模块可以通过 `db.DB` 使用该连接池执行 SQL 操作
 // 注意：使用前需要调用 `Init` 初始化连接池并校验连接。
 var DB *sql.DB
 
-// Init 初始化 MySQL 连接池并验证可用性
+// Init 初始化 PostgreSQL 连接池并验证可用性
 //
 // 参数:
 //
-//	dsn: Data Source Name，MySQL 数据源名称，格式示例：
-//	  "user:password@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local"
+//	dsn: Data Source Name，PostgreSQL 数据源名称，格式示例：
+//	  "user=youruser password=yourpassword dbname=yourdb sslmode=disable"
 //
 // 返回值:
 //
@@ -30,13 +30,13 @@ var DB *sql.DB
 //
 // 使用示例:
 //
-//	err := db.Init("user:pass@tcp(localhost:3306)/mydb?charset=utf8mb4&parseTime=True&loc=Local")
+//	err := db.Init("user=youruser password=yourpassword dbname=yourdb sslmode=disable")
 //	if err != nil {
 //	    // 处理错误（例如记录并退出程序）
 //	}
 func Init(dsn string) error {
 	var err error
-	DB, err = sql.Open("mysql", dsn)
+	DB, err = sql.Open("postgres", dsn)
 	if err != nil {
 		return err
 	}

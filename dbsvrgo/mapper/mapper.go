@@ -92,13 +92,15 @@ func BuildSQL(msg proto.Message) (string, []any, error) {
 	opField := m.Descriptor().Fields().ByName("op")
 	op = p.DbOpType(m.Get(opField).Enum())
 
-	// 遍历表每个字段
+	// 遍历表每个字段 必须要有一个id字段
+	foundIdField := false
 	for _, fi := range meta.Fields {
 		f := fi.Fd
 		name := fi.Name // 列名
 		v := m.Get(f)   // 从消息中获取值
 
 		if name == "id" { // 任何表统一有一个主键列名id
+			foundIdField = true
 			idVal = v.Interface()
 		}
 
@@ -114,39 +116,54 @@ func BuildSQL(msg proto.Message) (string, []any, error) {
 			val = v.Interface()
 		}
 
-		// 列名追加
-		cols = append(cols, name)
-		// 列值追加
-		vals = append(vals, val)
-		// sql set部分
-		sets = append(sets, fmt.Sprintf("%s=?", name))
+		// 先将主键id排除
+		if name != "id" {
+			// 列名追加
+			cols = append(cols, name)
+			// 列值追加
+			vals = append(vals, val)
+		}
 	}
 
-	placeholders := strings.TrimRight(strings.Repeat("?,", len(cols)), ",")
+	if foundIdField == false {
+		return "", vals, fmt.Errorf("not found field id in table %s", meta.Table)
+	}
+
+	// 生成PostgreSQL风格的占位符 $1, $2, $3...
+	var placeholders []string
+	for i := 1; i <= len(cols); i++ {
+		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+	}
+
+	// 生成SET子句的占位符
+	for i, name := range cols {
+		sets = append(sets, fmt.Sprintf("%s=$%d", name, i+1))
+	}
 
 	switch op {
 	// 行插入数据
 	case p.DbOpType_OP_INSERT:
 		return fmt.Sprintf(
-			"INSERT INTO %s(%s) VALUES(%s)",
-			meta.Table, strings.Join(cols, ","), placeholders,
-		), vals, nil
+			"INSERT INTO %s(%s,id) VALUES(%s)",
+			meta.Table, strings.Join(cols, ","), strings.Join(append(placeholders, fmt.Sprintf("$%d", len(cols)+1)), ","),
+		), append(vals, idVal), nil
 	// 行Replace主键存在则更新否则插入
 	case p.DbOpType_OP_REPLACE:
+		// PostgreSQL使用INSERT ... ON CONFLICT代替REPLACE
 		return fmt.Sprintf(
-			"REPLACE INTO %s(%s) VALUES(%s)",
-			meta.Table, strings.Join(cols, ","), placeholders,
-		), vals, nil
+			"INSERT INTO %s(%s,id) VALUES(%s) ON CONFLICT (id) DO UPDATE SET %s",
+			meta.Table, strings.Join(cols, ","), strings.Join(append(placeholders, fmt.Sprintf("$%d", len(cols)+1)), ","), strings.Join(sets, ","),
+		), append(vals, idVal), nil
 	// 根据主键行更新
 	case p.DbOpType_OP_UPDATE:
 		return fmt.Sprintf(
-			"UPDATE %s SET %s WHERE id=?",
-			meta.Table, strings.Join(sets, ","),
+			"UPDATE %s SET %s WHERE id=$%d",
+			meta.Table, strings.Join(sets, ","), len(vals)+1,
 		), append(vals, idVal), nil
 	// 根据主键行删除
 	case p.DbOpType_OP_DELETE:
 		return fmt.Sprintf(
-			"DELETE FROM %s WHERE id=?",
+			"DELETE FROM %s WHERE id=$1",
 			meta.Table,
 		), []any{idVal}, nil
 	}

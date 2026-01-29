@@ -5,6 +5,7 @@ import (
 	"dbsvrgo/db"
 	"dbsvrgo/proto_res"
 	"dbsvrgo/worker"
+	"fmt"
 	"log"
 )
 
@@ -12,8 +13,16 @@ func main() {
 	rpcAddr := "127.0.0.1:20026"
 	appId := "1.1.2.1"
 
-	if err := db.Init("root:root@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4"); err != nil {
+	connStr := "host=127.0.0.1 port=5432 " +
+		"user=postgres " +
+		"password=root " +
+		"dbname=koyebdb " +
+		"sslmode=disable "
+
+	if err := db.Init(connStr); err != nil {
 		log.Fatal(err)
+	} else {
+		fmt.Println("连接DB成功")
 	}
 
 	w := worker.New(1024)

@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"fmt"
 	"log"
 	"reflect"
 
@@ -53,6 +54,7 @@ func (w *Worker) Start() {
 
 func (w *Worker) ExecWriteOper(msg proto.Message) error {
 	sqlStr, args, err := mapper.BuildSQL(msg)
+	log.Println("ExecWriteOper SQL => ", sqlStr)
 	if err != nil {
 		log.Println("build sql error:", err)
 		return err
@@ -97,6 +99,7 @@ func (w *Worker) SelectRaw(msg proto.Message, where string, args ...any) ([]prot
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("SelectRaw => ", sqlStr)
 
 	// 执行查询
 	rows, err := db.DB.Query(sqlStr, args...)
@@ -179,21 +182,23 @@ func (w *Worker) SelectRaw(msg proto.Message, where string, args ...any) ([]prot
 }
 
 // goType 根据 proto 字段类型，返回对应的 Go reflect.Type
-// 用于 rows.Scan 接收数据库字段值
+// 用于 rows.Scan 接收 PostgreSQL 字段值
 func goType(fd protoreflect.FieldDescriptor) reflect.Type {
 	switch fd.Kind() {
 	case protoreflect.Int32Kind:
-		return reflect.TypeOf(int32(0))
+		return reflect.TypeOf(int32(0)) // INTEGER 对应 int32
 	case protoreflect.Int64Kind:
-		return reflect.TypeOf(int64(0))
+		return reflect.TypeOf(int64(0)) // BIGINT 对应 int64
 	case protoreflect.StringKind:
-		return reflect.TypeOf("")
+		return reflect.TypeOf("") // TEXT 对应 string
 	case protoreflect.BoolKind:
-		return reflect.TypeOf(false)
+		return reflect.TypeOf(false) // BOOLEAN 对应 bool
 	case protoreflect.FloatKind:
-		return reflect.TypeOf(float32(0))
+		return reflect.TypeOf(float32(0)) // REAL 对应 float32
 	case protoreflect.DoubleKind:
-		return reflect.TypeOf(float64(0))
+		return reflect.TypeOf(float64(0)) // DOUBLE PRECISION 对应 float64
+	case protoreflect.BytesKind:
+		return reflect.TypeOf([]byte{}) // BYTEA 对应 []byte
 	default:
 		// 不支持的类型返回 nil（理论上不会走到）
 		return reflect.TypeOf(nil)
@@ -222,6 +227,8 @@ func setScalar(pm protoreflect.Message, fd protoreflect.FieldDescriptor, v any) 
 		pm.Set(fd, protoreflect.ValueOfFloat32(float32(rv.Float())))
 	case protoreflect.DoubleKind:
 		pm.Set(fd, protoreflect.ValueOfFloat64(rv.Float()))
+	case protoreflect.BytesKind:
+		pm.Set(fd, protoreflect.ValueOfBytes(rv.Bytes())) // 处理 BYTEA 类型
 	}
 }
 
@@ -307,7 +314,7 @@ func (w *Worker) handleInsertDbUserRecordReq(pkg *proto_res.ProtoPackage) {
 		msgRes.Ret = -1
 
 	} else {
-		res, err := w.SelectRaw(&proto_res.DbUserRecord{}, "id=? limit 1", msg.DbUserRecord.Id)
+		res, err := w.SelectRaw(&proto_res.DbUserRecord{}, "id=$1 limit 1", msg.DbUserRecord.Id)
 		if err != nil {
 			log.Println("select error:", err)
 			msgRes.Ret = -1
@@ -342,7 +349,7 @@ func (w *Worker) handleSelectDbUserRecordLoginReq(pkg *proto_res.ProtoPackage) {
 	res.Password = req.Password
 	res.Ret = 0
 
-	selectRes, err := w.SelectRaw(&proto_res.DbUserRecord{}, "user_id=? limit 1", req.UserId)
+	selectRes, err := w.SelectRaw(&proto_res.DbUserRecord{}, "user_id=$1 limit 1", req.UserId)
 	if err != nil {
 		log.Println("select error:", err)
 		res.Ret = -1
