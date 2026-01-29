@@ -6,29 +6,37 @@ option go_package = "/proto_res";
 
 enum DbOpType
 {
+    // 通过id插入新记录
     OP_INSERT = 0;
+    // 通过id更新记录没有记录则插入
     OP_REPLACE = 1;
+    // 通过id更新记录
     OP_UPDATE = 2;
+    // 通过id删除记录
     OP_DELETE = 3;
 }
 
+// 背包单个数据
 message DbPlayerBagItem
 {
     int32 itemID = 1;
     int32 number = 2;
 }
 
+// 背包数据
 message DbPlayerBag
 {
     repeated DbPlayerBagItem bagItemList = 1;
 }
 
+// 玩家PB数据
 message DbPlayerBaseInfo
 {
     int32 level = 1;
     DbPlayerBag bagData = 2;
 }
 
+// 玩家记录
 message DbUserRecord
 {
     DbOpType op = 1;
@@ -38,31 +46,40 @@ message DbUserRecord
     DbPlayerBaseInfo base_info = 5;
 }
 
+// 通过指定where检索DbUserRecord
 message SelectDbUserRecordReq
 {
     string where = 1;
 }
 
+// SelectDbUserRecordReq对应的返回响应多条记录
 message SelectDbUserRecordRes
 {
     repeated DbUserRecord userRecordList = 1;
 }
 
+// 插入新的DbUserRecord记录
 message InsertDbUserRecordReq
 {
+    // 是谁请求的
     uint64 clientGID = 1;
+    // 是谁请求的
     int32 workerIdx = 2;
     DbUserRecord dbUserRecord = 3;
 }
 
+// InsertDbUserRecordReq的返回
 message InsertDbUserRecordRes
 {
+    // 是谁请求的
     uint64 clientGID = 1;
+    // 是谁请求的
     int32 workerIdx = 2;
     DbUserRecord dbUserRecord = 3;
     int32 ret = 4;
 }
 
+// 登录时查询DbUserRecord记录
 message SelectDbUserRecordLoginReq
 {
     string playerId = 1;
@@ -72,6 +89,7 @@ message SelectDbUserRecordLoginReq
     string password = 5;
 }
 
+// SelectDbUserRecordLoginReq的返回
 message SelectDbUserRecordLoginRes
 {
     string playerId = 1;

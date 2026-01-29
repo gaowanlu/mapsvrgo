@@ -1,3 +1,0 @@
----@class FSRoomPlayerType
----@field userId string userId
----@field room FSRoom player所属房间
