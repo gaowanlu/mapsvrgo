@@ -14,10 +14,13 @@ local PlayerMgr = require("PlayerMgrLogic")
 local MapMgr = require("MapMgrLogic")
 local FSRoomMgr = require("FSRoomMgrLogic")
 local Map3DMgr = require("Map3DMgrLogic")
+local TimeMgr = require("TimeMgrLogic")
+local AlgorithmRandom = require("AlgorithmRandomLogic")
 
 --- 线程被启动时只调用一次
 ---@return nil
 function MapSvr.OnInit()
+    AlgorithmRandom.RandomSeed(math.floor(TimeMgr.GetS()))
     MapSvr.safeStop = false;
 end
 
@@ -75,6 +78,7 @@ function MapSvr.OnReload()
     table.insert(reloadList, "FSRoomPlayerLogic")
     table.insert(reloadList, "FSRoomPlayerSkillLogic")
     table.insert(reloadList, "FSRoomSyncLogic")
+    table.insert(reloadList, "FSRoomMapLogic")
     table.insert(reloadList, "FSRoomLogic")
     table.insert(reloadList, "FSRoomMgrLogic")
     table.insert(reloadList, "MsgHandlerFromUDPLogic")
