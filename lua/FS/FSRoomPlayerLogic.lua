@@ -9,7 +9,7 @@
 ---@field MP number 技能蓝值
 ---@field maxMP number 最大技能蓝值
 ---@field skills table<integer,boolean> 技能
----@field skillCooldowns table<integer,integer> 技能冷却时间
+---@field skillCooldowns table<integer,number> 技能冷却时间
 ---@field lastFrameId number 客户端最后确认接收到的帧ID
 ---@field isReady boolean 是否已经就绪
 ---@field isConnected boolean 是否连接正常
@@ -97,7 +97,7 @@ function FSRoomPlayer:CanUseSkill(skillId)
 end
 
 ---@param skillId integer 技能ID
----@param cooldown integer 冷却值
+---@param cooldown number 冷却值
 ---@return boolean 设置是否成功
 function FSRoomPlayer:SetSkillCooldown(skillId, cooldown)
     if not self.skills[skillId] then
