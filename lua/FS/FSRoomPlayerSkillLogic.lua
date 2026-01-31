@@ -1,5 +1,5 @@
----@class FSSkill
----@field skillsDB table<integer,FSSkill>
+---@class FSRoomPlayerSkill
+---@field skillsDB table<integer,FSRoomPlayerSkill>
 ---@field TYPE_DAMAGE string 技能类型 伤害
 ---@field TYPE_HEAL string 技能类型 治疗
 ---@field TYPE_BUFF string 技能类型 增益
@@ -13,15 +13,15 @@
 ---@field damage number 造成的伤害值
 ---@field healAmount number 治疗量
 ---@field aoeRadius number AOE半径(0表示单体)
-local FSSkill = require("FSSkillData");
+local FSRoomPlayerSkill = require("FSRoomPlayerSkillData");
 
 -- Skill types
-FSSkill.TYPE_DAMAGE = "damage";
-FSSkill.TYPE_HEAL = "heal";
-FSSkill.TYPE_BUFF = "buff";
-FSSkill.TYPE_DEBUFF = "debuff";
+FSRoomPlayerSkill.TYPE_DAMAGE = "damage";
+FSRoomPlayerSkill.TYPE_HEAL = "heal";
+FSRoomPlayerSkill.TYPE_BUFF = "buff";
+FSRoomPlayerSkill.TYPE_DEBUFF = "debuff";
 
----@class FSSkillConfig
+---@class FSRoomPlayerSkillConfig
 ---@field costMP number MP消耗
 ---@field cooldown number 冷却时间（秒）
 ---@field range number 技能施法距离
@@ -30,14 +30,14 @@ FSSkill.TYPE_DEBUFF = "debuff";
 ---@field aoeRadius number AOE半径(0表示单体)
 
 --- 创建新的技能对象
----@return FSSkill
+---@return FSRoomPlayerSkill
 ---@param id integer
 ---@param name string
 ---@param skillType string
----@param config FSSkillConfig
-function FSSkill.new(id, name, skillType, config)
-    ---@type FSSkill
-    local self = setmetatable({}, FSSkill);
+---@param config FSRoomPlayerSkillConfig
+function FSRoomPlayerSkill.new(id, name, skillType, config)
+    ---@type FSRoomPlayerSkill
+    local self = setmetatable({}, FSRoomPlayerSkill);
 
     self.id = id;
     self.name = name;
@@ -57,7 +57,7 @@ end
 ---@param caster FSRoomPlayer
 ---@param targetX number
 ---@param targetY number
-function FSSkill:CanCast(caster, targetX, targetY)
+function FSRoomPlayerSkill:CanCast(caster, targetX, targetY)
     -- 检查MP是否足够
     if caster.MP < self.costMP then
         return false;
@@ -86,7 +86,7 @@ end
 --- 释放技能
 ---@param caster FSRoomPlayer 施法者
 ---@param targets table<integer,FSRoomPlayer> 目标
-function FSSkill:Cast(caster, targets)
+function FSRoomPlayerSkill:Cast(caster, targets)
     -- 消耗MP
     caster:ConsumeMP(self.costMP);
 
@@ -95,7 +95,7 @@ function FSSkill:Cast(caster, targets)
 
     local results = {};
 
-    if self.skillType == FSSkill.TYPE_DAMAGE then
+    if self.skillType == FSRoomPlayerSkill.TYPE_DAMAGE then
         -- 伤害型技能处理
         for _, target in ipairs(targets) do
             local isDead = target:TakeDamage(self.damage);
@@ -106,7 +106,7 @@ function FSSkill:Cast(caster, targets)
                 remainingHP = target.HP       -- 剩余HP
             });
         end
-    elseif self.skillType == FSSkill.TYPE_HEAL then
+    elseif self.skillType == FSRoomPlayerSkill.TYPE_HEAL then
         -- 治疗型技能处理
         for _, target in ipairs(targets) do
             target:Heal(self.healAmount);
@@ -122,11 +122,11 @@ function FSSkill:Cast(caster, targets)
 end
 
 -- 初始化技能数据
-function FSSkill.InitSkillsDB()
-    FSSkill.skillsDB = {};
+function FSRoomPlayerSkill.InitSkillsDB()
+    FSRoomPlayerSkill.skillsDB = {};
 
     -- 普通攻击
-    FSSkill.skillsDB[1] = FSSkill.new(1, "Basic Attack", FSSkill.TYPE_DAMAGE, {
+    FSRoomPlayerSkill.skillsDB[1] = FSRoomPlayerSkill.new(1, "Basic Attack", FSRoomPlayerSkill.TYPE_DAMAGE, {
         costMP = 0,
         cooldown = 0,
         range = 2,
@@ -136,7 +136,7 @@ function FSSkill.InitSkillsDB()
     });
 
     -- 火球术
-    FSSkill.skillsDB[2] = FSSkill.new(2, "Fireball", FSSkill.TYPE_DAMAGE, {
+    FSRoomPlayerSkill.skillsDB[2] = FSRoomPlayerSkill.new(2, "Fireball", FSRoomPlayerSkill.TYPE_DAMAGE, {
         costMP = 50,
         cooldown = 10,
         range = 10,
@@ -146,7 +146,7 @@ function FSSkill.InitSkillsDB()
     });
 
     -- 治疗术
-    FSSkill.skillsDB[3] = FSSkill.new(3, "Heal", FSSkill.TYPE_HEAL, {
+    FSRoomPlayerSkill.skillsDB[3] = FSRoomPlayerSkill.new(3, "Heal", FSRoomPlayerSkill.TYPE_HEAL, {
         costMP = 30,
         cooldown = 15,
         range = 5,
@@ -156,7 +156,7 @@ function FSSkill.InitSkillsDB()
     });
 
     -- 闪电打击
-    FSSkill.skillsDB[4] = FSSkill.new(4, "Lightning Strike", FSSkill.TYPE_DAMAGE, {
+    FSRoomPlayerSkill.skillsDB[4] = FSRoomPlayerSkill.new(4, "Lightning Strike", FSRoomPlayerSkill.TYPE_DAMAGE, {
         costMP = 80,
         cooldown = 20,
         range = 15,
@@ -166,7 +166,7 @@ function FSSkill.InitSkillsDB()
     });
 
     -- 护盾（当前实现为自我治疗）
-    FSSkill.skillsDB[5] = FSSkill.new(5, "Shield", FSSkill.TYPE_HEAL, {
+    FSRoomPlayerSkill.skillsDB[5] = FSRoomPlayerSkill.new(5, "Shield", FSRoomPlayerSkill.TYPE_HEAL, {
         costMP = 40,
         cooldown = 12,
         range = 0,
@@ -178,18 +178,18 @@ end
 
 --- 根据技能ID获取技能
 ---@param skillId integer
----@return FSSkill|nil
-function FSSkill.GetSkill(skillId)
-    return FSSkill.skillsDB[skillId];
+---@return FSRoomPlayerSkill|nil
+function FSRoomPlayerSkill.GetSkill(skillId)
+    return FSRoomPlayerSkill.skillsDB[skillId];
 end
 
 --- 获取全部技能
----@return table<integer,FSSkill>
-function FSSkill.GetAllSkills()
-    return FSSkill.skillsDB;
+---@return table<integer,FSRoomPlayerSkill>
+function FSRoomPlayerSkill.GetAllSkills()
+    return FSRoomPlayerSkill.skillsDB;
 end
 
 --- 初始化技能数据库
-FSSkill.InitSkillsDB();
+FSRoomPlayerSkill.InitSkillsDB();
 
-return FSSkill;
+return FSRoomPlayerSkill;
